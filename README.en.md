@@ -56,9 +56,3 @@ demo-report/
 ├── track.json          ← frame-difference motion curve (the machine's evidence)
 └── frames/             ← first and last keyframe of every shot, 106 files
 ```
-
-## Licence
-
-Apache-2.0. `demo-video.mp4` and `demo-report/frames/` are stills from the short film
-*啥是AI* (directed by 李幻枫), included for demonstration only. They remain the property
-of their author and are not covered by this repository's licence.

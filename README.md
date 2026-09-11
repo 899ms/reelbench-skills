@@ -52,8 +52,3 @@ demo-report/
 ├── track.json          ← 逐帧差分的运动曲线（机器证据）
 └── frames/             ← 每镜首尾两张关键帧，共 106 张
 ```
-
-## 许可
-
-Apache-2.0。`demo-video.mp4` 与 `demo-report/frames/` 是短片《啥是AI》（导演 李幻枫）的画面，
-仅作演示用途，版权归原作者所有，不适用本仓库的许可证。
