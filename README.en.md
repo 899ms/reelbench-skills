@@ -9,22 +9,6 @@ Claude Code / Codex skills for working with video.
 | --- | --- |
 | [video-shots](skills/video-shots/README.en.md) | **Shot breakdown**: turns a finished film into a shot-by-shot table — duration, shot size, category, camera move, frame description. Cuts and durations are measured by ffmpeg; the model only judges the four things it should; 14 quality gates check every call. |
 
-## See the output first
-
-`demo-report/` is the **real output** of running the skill on `demo-video.mp4`
-(a 202.9-second AI-generated short film, *啥是AI*):
-
-```
-demo-report/
-├── shots-report.html   ← clone and double-click: embedded player, searchable shot list, stats, gates
-├── shots.json          ← the breakdown data for all 53 shots
-├── shots.md            ← Markdown shot list
-├── track.json          ← frame-difference motion curve (the machine's evidence)
-└── frames/             ← first and last keyframe of every shot, 106 files
-```
-
-53 shots, 3.83 s average shot length, 15.7 cuts per minute, all 14 gates green.
-
 ## Install
 
 ```bash
@@ -48,6 +32,30 @@ Requirements: `node` >= 18 and `ffmpeg` / `ffprobe` (macOS: `brew install node f
 
 Prefer a copy over a symlink? `cp -r skills/video-shots ~/.claude/skills/` —
 each skill is self-contained.
+
+## Example
+
+`demo-report/` is the **real output** of running the skill on `demo-video.mp4`
+(a 202.9-second AI-generated short film, *啥是AI*): 53 shots, 3.83 s average shot length,
+15.7 cuts per minute, all 14 gates green.
+
+[![Shot breakdown report](skills/video-shots/assets/report.png)](demo-report/shots-report.html)
+
+The report is a **single interactive page**: an embedded player (playback highlights the current
+shot, click a shot to jump), a pace strip, a shot list you can search, filter and sort (list or
+card view, first and last keyframe side by side, click a frame to enlarge), distributions, cast,
+and the quality gates. No external dependencies — double-click it offline.
+
+<img src="skills/video-shots/assets/report-mobile.png" width="360" alt="the shot list on a narrow screen">
+
+```
+demo-report/
+├── shots-report.html   ← clone and double-click
+├── shots.json          ← the breakdown data for all 53 shots
+├── shots.md            ← Markdown shot list
+├── track.json          ← frame-difference motion curve (the machine's evidence)
+└── frames/             ← first and last keyframe of every shot, 106 files
+```
 
 ## Licence
 
