@@ -32,7 +32,8 @@ export const DEFAULT_PARAMS = {
   staticMaxMotion: 1.5,    // 实测运动中位数低于它 = 画面几乎没动
   busyMinMotion: 12,       // 高于它 = 画面动得厉害（只提示不拦，见 motion 门）
   motionGateMinSeconds: 1, // 短于它的镜头采样点太少，motion 门不查（值照给）
-  minFrameChars: 12,       // 画面描述的最低字数
+  minFrameChars: 12,       // 中文画面描述的最低字数
+  minFrameWords: 8,        // 英文画面描述的最低词数（12 个字符只有两个单词，等于没设门）
   trackHz: 5,              // 运动曲线采样率（每秒几个点）
   frameDir: 'frames',      // 关键帧目录
 };
@@ -120,8 +121,22 @@ export const VAGUE_WORDS = [
   '震撼人心', '画面感十足', '很美', '非常美', '精美绝伦', '赏心悦目', '引人入胜',
 ];
 
+/** 英文空话表。判据跟着描述本身的语言走，不跟着界面语言走。 */
+export const VAGUE_WORDS_EN = [
+  'atmospheric', 'atmosphere is', 'cinematic vibe', 'visually stunning', 'visually striking',
+  'breathtaking', 'gorgeous', 'mesmerizing', 'captivating', 'evocative', 'aesthetically',
+  'beautifully shot', 'stunning', 'epic feel', 'moody vibe',
+];
+
 /** 画面描述的废话开头：镜头表里每行都在写镜头，不用再声明一遍。 */
 export const FILLER_OPENERS = [/^这一?个?镜头/, /^本镜头?/, /^该镜头/, /^此镜头/];
+export const FILLER_OPENERS_EN = [
+  /^this shot\b/i, /^the shot\b/i, /^in this shot\b/i, /^this scene\b/i, /^in this scene\b/i,
+  /^we see\b/i, /^the camera shows\b/i, /^the (image|frame) shows\b/i, /^here we\b/i,
+];
+
+/** 有没有中日韩文字——用来判断该按「数字数」还是「数词数」查画面描述。 */
+const CJK = /[㐀-鿿぀-ヿ가-힯]/;
 
 const r2 = (n) => Math.round(n * 100) / 100;
 const r1 = (n) => Math.round(n * 10) / 10;
@@ -387,32 +402,200 @@ export function stats(doc) {
 /* validate：13 道门，全是代码                                          */
 /* ------------------------------------------------------------------ */
 
-export const GATE_LABELS = {
-  timeline: '时间轴连续',
-  duration: '时长自洽',
-  numbering: '镜号纪律',
-  size: '景别枚举',
-  category: '类别枚举',
-  camera: '运镜枚举',
-  transition: '转场枚举',
-  'frame-text': '画面描述可核对',
-  dedup: '画面描述不重复',
-  subjects: '主体对账',
-  'category-evidence': '类别要有证据',
-  motion: '运镜实测对账',
-  boundary: '边界来自检测',
-  frames: '关键帧齐全',
+/**
+ * 门的名字。报告、Markdown、命令行三处共用，跟着 `--lang` 走——
+ * 英文报告里印一排中文门名，等于没做英文。
+ */
+const GATE_LABELS = {
+  zh: {
+    timeline: '时间轴连续', duration: '时长自洽', numbering: '镜号纪律',
+    size: '景别枚举', category: '类别枚举', camera: '运镜枚举', transition: '转场枚举',
+    'frame-text': '画面描述可核对', dedup: '画面描述不重复', subjects: '主体对账',
+    'category-evidence': '类别要有证据', motion: '运镜实测对账',
+    boundary: '边界来自检测', frames: '关键帧齐全',
+  },
+  en: {
+    timeline: 'Timeline is continuous', duration: 'Durations add up', numbering: 'Shot numbering',
+    size: 'Shot size vocabulary', category: 'Category vocabulary', camera: 'Camera vocabulary',
+    transition: 'Transition vocabulary', 'frame-text': 'Frame description is checkable',
+    dedup: 'No duplicate descriptions', subjects: 'Subjects reconcile with cast',
+    'category-evidence': 'Categories carry evidence', motion: 'Camera vs. measured motion',
+    boundary: 'Boundaries come from detection', frames: 'Keyframes present',
+  },
 };
 
-const gate = (id, issues, skipped = null) => ({
+export const gateLabel = (id, lang) => GATE_LABELS[lang === 'en' ? 'en' : 'zh'][id] ?? id;
+
+/**
+ * 校验与命令行的每一句话。两种语言各写一遍，不靠拼接——
+ * 中文的「第 3 个镜头」和英文的 "shot 3" 语序不一样，拼不出来。
+ */
+const MSG = {
+  noShots: { zh: () => '没有任何镜头', en: () => 'there are no shots at all' },
+  notNumber: { zh: (id) => `${id}：start/end 不是数字`, en: (id) => `${id}: start/end is not a number` },
+  endBeforeStart: {
+    zh: (id, end, start) => `${id}：end(${end}) 不大于 start(${start})`,
+    en: (id, end, start) => `${id}: end (${end}) is not after start (${start})`,
+  },
+  notFromZero: {
+    zh: (id, start) => `${id}：首镜不是从 0.00 开始（${start}）`,
+    en: (id, start) => `${id}: the first shot does not start at 0.00 (it starts at ${start})`,
+  },
+  gap: {
+    zh: (id, d, prev, start) => `${id}：与上一镜之间漏了 ${d} 秒（${prev} → ${start}）`,
+    en: (id, d, prev, start) => `${id}: ${d}s is unaccounted for before this shot (${prev} → ${start})`,
+  },
+  overlap: {
+    zh: (id, d, prev, start) => `${id}：与上一镜重叠 ${d} 秒（${prev} → ${start}）`,
+    en: (id, d, prev, start) => `${id}: overlaps the previous shot by ${d}s (${prev} → ${start})`,
+  },
+  tail: {
+    zh: (id, end, total, diff) => `${id}：末镜收在 ${end}，片长 ${total}，差 ${diff} 秒`,
+    en: (id, end, total, diff) => `${id}: the last shot ends at ${end} but the film runs ${total} — ${diff}s short`,
+  },
+  secondsMismatch: {
+    zh: (id, got, want) => `${id}：seconds=${got}，end−start=${want}`,
+    en: (id, got, want) => `${id}: seconds=${got} but end−start=${want}`,
+  },
+  tooShort: {
+    zh: (id, sec, min) => `${id}：只有 ${sec} 秒（短于 ${min}），必须在 note 里说明是闪切还是检测碎片`,
+    en: (id, sec, min) => `${id}: only ${sec}s (under ${min}) — note must say whether it is a flash cut or detector noise`,
+  },
+  wrongId: {
+    zh: (i, got, want) => `第 ${i} 个镜头的 id 是 ${got ?? '(空)'}，应为 ${want}`,
+    en: (i, got, want) => `shot ${i} has id ${got ?? '(empty)'}, expected ${want}`,
+  },
+  enumEmpty: {
+    zh: (id, label) => `${id}：${label} 还没填`,
+    en: (id, label) => `${id}: ${label} is still empty`,
+  },
+  enumBad: {
+    zh: (id, value, keys) => `${id}：${value} 不在词表里（可选：${keys}）`,
+    en: (id, value, keys) => `${id}: ${value} is not in the vocabulary (choose from: ${keys})`,
+  },
+  transitionBad: {
+    zh: (id, value) => `${id}：transitionIn=${value} 不在词表里`,
+    en: (id, value) => `${id}: transitionIn=${value} is not in the vocabulary`,
+  },
+  frameEmpty: {
+    zh: (id) => `${id}：画面描述是空的`,
+    en: (id) => `${id}: the frame description is empty`,
+  },
+  frameShort: {
+    zh: (id, got, min) => `${id}：画面描述只有 ${got} 字（至少 ${min}）`,
+    en: (id, got, min) => `${id}: the frame description is only ${got} words (at least ${min})`,
+  },
+  frameVague: {
+    zh: (id, words) => `${id}：画面描述里有空话「${words}」——换成看得见的东西`,
+    en: (id, words) => `${id}: the frame description leans on "${words}" — replace it with something visible`,
+  },
+  frameFiller: {
+    zh: (id) => `${id}：画面描述用「这个镜头…」开头——镜头表里每行都是镜头，直接写画面`,
+    en: (id) => `${id}: the frame description opens with "this shot…" — every row is a shot, just describe the frame`,
+  },
+  dedup: {
+    zh: (id, other) => `${id}：画面描述与 ${other} 一字不差——两镜真一样也要写出差别（机位、动作进度、景别）`,
+    en: (id, other) => `${id}: the frame description is word-for-word identical to ${other} — even a repeat needs its difference written down (angle, how far the action has got, size)`,
+  },
+  subjectUnknown: {
+    zh: (id, sub) => `${id}：主体 ${sub} 不在 cast 里`,
+    en: (id, sub) => `${id}: subject ${sub} is not in the cast`,
+  },
+  needAudio: {
+    zh: (id) => `${id}：类别是「对话」却没记台词（audio 空）`,
+    en: (id) => `${id}: category is "dialogue" but no line was recorded (audio is empty)`,
+  },
+  needText: {
+    zh: (id) => `${id}：类别是「字卡」却没记画面文字（onscreenText 空）`,
+    en: (id) => `${id}: category is "text card" but no on-screen text was recorded (onscreenText is empty)`,
+  },
+  needSubject: {
+    zh: (id) => `${id}：类别是「反应」却没写是谁在反应（subjects 空）`,
+    en: (id) => `${id}: category is "reaction" but nobody is reacting (subjects is empty)`,
+  },
+  needEmpty: {
+    zh: (id, who) => `${id}：类别是「空镜」却写了主体 ${who}`,
+    en: (id, who) => `${id}: category is "empty" but subjects lists ${who}`,
+  },
+  motionTooStill: {
+    zh: (id, move, m, max) => `${id}：写的是「${move}」，实测帧间变化只有 ${m}（< ${max}）——这一镜画面没动，重看一遍`,
+    en: (id, move, m, max) => `${id}: annotated "${move}" but the measured frame change is only ${m} (< ${max}) — nothing moved, look again`,
+  },
+  motionTooBusy: {
+    zh: (id, move, m) => `${id}：写的是「${move}」，实测帧间变化 ${m} 偏高——若是主体在动就对，若是机位在动要改运镜`,
+    en: (id, move, m) => `${id}: annotated "${move}" but the measured frame change is ${m} — fine if the subject is moving, but if the camera moved the annotation needs fixing`,
+  },
+  boundaryUndeclared: {
+    zh: (id, start) => `${id}：起点 ${start} 既不在检测切点上，也没写进 manualCuts——自己加的刀要声明`,
+    en: (id, start) => `${id}: start ${start} is neither a detected cut nor listed in manualCuts — a cut you added must be declared`,
+  },
+  frameMissing: {
+    zh: (id) => `${id}：缺关键帧 ${id}a.jpg`,
+    en: (id) => `${id}: keyframe ${id}a.jpg is missing`,
+  },
+  skipNoCast: { zh: () => '没有声明 cast，跳过（视为通过）', en: () => 'no cast declared — skipped (counts as passed)' },
+  skipNoTrack: { zh: () => '没有给 --track，跳过（视为通过）', en: () => 'no --track given — skipped (counts as passed)' },
+  skipNoSeed: { zh: () => '文档里没有 seedCuts，跳过（视为通过）', en: () => 'no seedCuts in the document — skipped (counts as passed)' },
+  skipNoFrameDir: {
+    zh: (dir) => (dir ? `${dir}/ 不存在，跳过（视为通过）` : '没有检查关键帧目录，跳过（视为通过）'),
+    en: (dir) => (dir ? `${dir}/ does not exist — skipped (counts as passed)` : 'keyframe directory not checked — skipped (counts as passed)'),
+  },
+  // 命令行
+  cliHints: { zh: () => '提示（不拦）：', en: () => 'Hints (not blocking):' },
+  cliSummary: {
+    zh: (n, total, avg, rate) => `${n} 镜 / ${total} 秒 / 平均 ${avg} 秒 / 每分钟 ${rate} 切`,
+    en: (n, total, avg, rate) => `${n} shots / ${total}s / ${avg}s average / ${rate} cuts per minute`,
+  },
+  cliFailed: {
+    zh: (n) => `${n} 道门没过，逐条修完重跑。`,
+    en: (n) => `${n} gates failed — fix them one by one and run again.`,
+  },
+  cliSeed: {
+    zh: (d, fps, w, h, cuts, shots) => `[seed] ${d}s / ${fps}fps / ${w}x${h} → 检测 ${cuts} 个切点，合并后 ${shots} 镜`,
+    en: (d, fps, w, h, cuts, shots) => `[seed] ${d}s / ${fps}fps / ${w}x${h} → ${cuts} cuts detected, ${shots} shots after merging`,
+  },
+  cliTrack: {
+    zh: (path, n, hz) => `[seed] 运动曲线 → ${path}（${n} 个采样点 @ ${hz}Hz）`,
+    en: (path, n, hz) => `[seed] motion curve → ${path} (${n} samples @ ${hz}Hz)`,
+  },
+  cliRecut: {
+    zh: (from, to, splits, merges) => `[recut] ${from} 镜 → ${to} 镜（补 ${splits} 刀 / 并 ${merges} 刀）`,
+    en: (from, to, splits, merges) => `[recut] ${from} shots → ${to} shots (${splits} added / ${merges} merged)`,
+  },
+  cliRecutNoTrack: {
+    zh: () => '[recut] 没给 --track，新镜头的实测运动是空的',
+    en: () => '[recut] no --track given — measured motion is empty on the new shots',
+  },
+  cliFrames: { zh: (n, dir) => `[frames] ${n} 张 → ${dir}/`, en: (n, dir) => `[frames] ${n} files → ${dir}/` },
+  cliFrameFail: { zh: (id) => `[frames] ${id} 抽帧失败，跳过`, en: (id) => `[frames] could not extract ${id}, skipping` },
+  cliSheet: {
+    zh: (out, from, to) => `[sheet] ${out}（${from}–${to}，行优先）`,
+    en: (out, from, to) => `[sheet] ${out} (${from}–${to}, row-major)`,
+  },
+  cliSheetFail: { zh: (out) => `[sheet] ${out} 生成失败，跳过`, en: (out) => `[sheet] could not build ${out}, skipping` },
+  cliSheetNone: {
+    zh: (pick) => `[sheet] 没有可用的 ${pick} 帧，先跑 frames`,
+    en: (pick) => `[sheet] no ${pick} frames available — run frames first`,
+  },
+};
+
+/** 文案的全部键名，供自测逐条对账中英两套都在。 */
+export const MESSAGE_KEYS = Object.keys(MSG);
+
+/** 取一套语言的文案：`const M = msgs(lang); M('gap', id, ...)` */
+export const msgs = (lang) => (key, ...args) => MSG[key][lang === 'en' ? 'en' : 'zh'](...args);
+
+const gate = (id, lang, issues, skipped = null) => ({
   id,
-  label: GATE_LABELS[id] ?? id,
+  label: gateLabel(id, lang),
   ok: skipped ? true : issues.length === 0,
   skipped,
   issues,
 });
 
 export function validate(doc, ctx = {}) {
+  const lang = ctx.lang === 'en' ? 'en' : 'zh';
+  const M = msgs(lang);
   const p = paramsOf(doc);
   const shots = doc?.shots ?? [];
   const total = Number(doc?.meta?.durationSeconds) || 0;
@@ -422,27 +605,25 @@ export function validate(doc, ctx = {}) {
   /* 1. 时间轴连续：按时间排序、首尾相接、从 0 开始、到片尾结束 */
   {
     const bad = [];
-    if (!shots.length) bad.push('没有任何镜头');
+    if (!shots.length) bad.push(M('noShots'));
     shots.forEach((s, i) => {
       const start = Number(s.start);
       const end = Number(s.end);
-      if (!Number.isFinite(start) || !Number.isFinite(end)) { bad.push(`${s.id}：start/end 不是数字`); return; }
-      if (end <= start) bad.push(`${s.id}：end(${end}) 不大于 start(${start})`);
-      if (i === 0 && Math.abs(start) > p.boundaryTolerance) bad.push(`${s.id}：首镜不是从 0.00 开始（${start}）`);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) { bad.push(M('notNumber', s.id)); return; }
+      if (end <= start) bad.push(M('endBeforeStart', s.id, end, start));
+      if (i === 0 && Math.abs(start) > p.boundaryTolerance) bad.push(M('notFromZero', s.id, start));
       if (i > 0) {
         const prev = Number(shots[i - 1].end);
         const d = start - prev;
         if (Math.abs(d) > p.boundaryTolerance) {
-          bad.push(d > 0
-            ? `${s.id}：与上一镜之间漏了 ${r2(d)} 秒（${prev} → ${start}）`
-            : `${s.id}：与上一镜重叠 ${r2(-d)} 秒（${prev} → ${start}）`);
+          bad.push(d > 0 ? M('gap', s.id, r2(d), prev, start) : M('overlap', s.id, r2(-d), prev, start));
         }
       }
       if (i === shots.length - 1 && total && Math.abs(end - total) > p.endTolerance) {
-        bad.push(`${s.id}：末镜收在 ${end}，片长 ${total}，差 ${r2(Math.abs(end - total))} 秒`);
+        bad.push(M('tail', s.id, end, total, r2(Math.abs(end - total))));
       }
     });
-    gates.push(gate('timeline', bad));
+    gates.push(gate('timeline', lang, bad));
   }
 
   /* 2. 时长自洽：seconds 必须等于 end − start，短镜必须带 note */
@@ -451,12 +632,12 @@ export function validate(doc, ctx = {}) {
     for (const s of shots) {
       const want = r2(Number(s.end) - Number(s.start));
       if (!Number.isFinite(want)) continue;
-      if (Math.abs(Number(s.seconds) - want) > 0.011) bad.push(`${s.id}：seconds=${s.seconds}，end−start=${want}`);
+      if (Math.abs(Number(s.seconds) - want) > 0.011) bad.push(M('secondsMismatch', s.id, s.seconds, want));
       if (want > 0 && want < p.minShotSeconds && !String(s.note ?? '').trim()) {
-        bad.push(`${s.id}：只有 ${want} 秒（短于 ${p.minShotSeconds}），必须在 note 里说明是闪切还是检测碎片`);
+        bad.push(M('tooShort', s.id, want, p.minShotSeconds));
       }
     }
-    gates.push(gate('duration', bad));
+    gates.push(gate('duration', lang, bad));
   }
 
   /* 3. 镜号纪律：S01 起、两位数、连号、唯一 */
@@ -464,9 +645,9 @@ export function validate(doc, ctx = {}) {
     const bad = [];
     shots.forEach((s, i) => {
       const want = shotNo(i);
-      if (s.id !== want) bad.push(`第 ${i + 1} 个镜头的 id 是 ${s.id ?? '(空)'}，应为 ${want}`);
+      if (s.id !== want) bad.push(M('wrongId', i + 1, s.id, want));
     });
-    gates.push(gate('numbering', bad));
+    gates.push(gate('numbering', lang, bad));
   }
 
   /* 4–6. 三张词表：景别 / 类别 / 运镜 */
@@ -474,10 +655,10 @@ export function validate(doc, ctx = {}) {
     const bad = [];
     for (const s of shots) {
       const v = s[key];
-      if (!v) { bad.push(`${s.id}：${GATE_LABELS[id]} 还没填`); continue; }
-      if (!table[v]) bad.push(`${s.id}：${v} 不在词表里（可选：${Object.keys(table).join(' / ')}）`);
+      if (!v) { bad.push(M('enumEmpty', s.id, gateLabel(id, lang))); continue; }
+      if (!table[v]) bad.push(M('enumBad', s.id, v, Object.keys(table).join(' / ')));
     }
-    gates.push(gate(id, bad));
+    gates.push(gate(id, lang, bad));
   }
 
   /* 7. 转场枚举：可省略，写了就得在表里 */
@@ -485,24 +666,38 @@ export function validate(doc, ctx = {}) {
     const bad = [];
     for (const s of shots) {
       if (s.transitionIn == null || s.transitionIn === '') continue;
-      if (!TRANSITIONS[s.transitionIn]) bad.push(`${s.id}：transitionIn=${s.transitionIn} 不在词表里`);
+      if (!TRANSITIONS[s.transitionIn]) bad.push(M('transitionBad', s.id, s.transitionIn));
     }
-    gates.push(gate('transition', bad));
+    gates.push(gate('transition', lang, bad));
   }
 
-  /* 8. 画面描述可核对：非空、够长、没有空话、不用废话开头 */
+  /*
+   * 8. 画面描述可核对：非空、够长、没有空话、不用废话开头。
+   *
+   * **判据跟着描述本身的语言走，不跟着 --lang 走**——中文界面下拉英文片是常事。
+   * 中文数字数（12 字是一句话），英文数词数（12 个字符只有两个单词，等于没设门）。
+   */
   {
     const bad = [];
     for (const s of shots) {
       const text = String(s.frame ?? '').trim();
-      if (!text) { bad.push(`${s.id}：画面描述是空的`); continue; }
-      const chars = text.replace(/\s+/g, '').length;
-      if (chars < p.minFrameChars) bad.push(`${s.id}：画面描述只有 ${chars} 字（至少 ${p.minFrameChars}）`);
-      const vague = VAGUE_WORDS.filter((w) => text.includes(w));
-      if (vague.length) bad.push(`${s.id}：画面描述里有空话「${vague.join('」「')}」——换成看得见的东西`);
-      if (FILLER_OPENERS.some((re) => re.test(text))) bad.push(`${s.id}：画面描述用「这个镜头…」开头——镜头表里每行都是镜头，直接写画面`);
+      if (!text) { bad.push(M('frameEmpty', s.id)); continue; }
+      const cjk = CJK.test(text);
+      if (cjk) {
+        const chars = text.replace(/\s+/g, '').length;
+        if (chars < p.minFrameChars) bad.push(M('frameShort', s.id, `${chars} 字`, `${p.minFrameChars} 字`));
+      } else {
+        const words = text.split(/\s+/).filter(Boolean).length;
+        if (words < p.minFrameWords) bad.push(M('frameShort', s.id, words, p.minFrameWords));
+      }
+      const lower = text.toLowerCase();
+      const hitAll = (cjk ? VAGUE_WORDS : VAGUE_WORDS_EN).filter((w) => lower.includes(w.toLowerCase()));
+      // 「stunning」被「visually stunning」包住时只报长的那条，不重复点名
+      const vague = hitAll.filter((w) => !hitAll.some((o) => o !== w && o.toLowerCase().includes(w.toLowerCase())));
+      if (vague.length) bad.push(M('frameVague', s.id, vague.join(cjk ? '」「' : '", "')));
+      if ((cjk ? FILLER_OPENERS : FILLER_OPENERS_EN).some((re) => re.test(text))) bad.push(M('frameFiller', s.id));
     }
-    gates.push(gate('frame-text', bad));
+    gates.push(gate('frame-text', lang, bad));
   }
 
   /* 9. 画面描述不重复：整句照抄上一镜 = 没看第二眼 */
@@ -512,26 +707,26 @@ export function validate(doc, ctx = {}) {
     for (const s of shots) {
       const text = String(s.frame ?? '').trim();
       if (!text) continue;
-      if (seen.has(text)) bad.push(`${s.id}：画面描述与 ${seen.get(text)} 一字不差——两镜真一样也要写出差别（机位、动作进度、景别）`);
+      if (seen.has(text)) bad.push(M('dedup', s.id, seen.get(text)));
       else seen.set(text, s.id);
     }
-    gates.push(gate('dedup', bad));
+    gates.push(gate('dedup', lang, bad));
   }
 
   /* 10. 主体对账：subjects 里的编号必须在顶层 cast 里（没 cast 就明说跳过） */
   {
     const cast = doc?.cast ?? [];
     if (!cast.length) {
-      gates.push(gate('subjects', [], '没有声明 cast，跳过（视为通过）'));
+      gates.push(gate('subjects', lang, [], M('skipNoCast')));
     } else {
       const ids = new Set(cast.map((c) => c.id));
       const bad = [];
       for (const s of shots) {
         for (const sub of s.subjects ?? []) {
-          if (!ids.has(sub)) bad.push(`${s.id}：主体 ${sub} 不在 cast 里`);
+          if (!ids.has(sub)) bad.push(M('subjectUnknown', s.id, sub));
         }
       }
-      gates.push(gate('subjects', bad));
+      gates.push(gate('subjects', lang, bad));
     }
   }
 
@@ -542,12 +737,12 @@ export function validate(doc, ctx = {}) {
       const need = SHOT_CATEGORIES[s.category]?.evidence;
       if (!need) continue;
       const subs = s.subjects ?? [];
-      if (need === 'audio' && !String(s.audio ?? '').trim()) bad.push(`${s.id}：类别是「对话」却没记台词（audio 空）`);
-      if (need === 'onscreenText' && !String(s.onscreenText ?? '').trim()) bad.push(`${s.id}：类别是「字卡」却没记画面文字（onscreenText 空）`);
-      if (need === 'subjects' && !subs.length) bad.push(`${s.id}：类别是「反应」却没写是谁在反应（subjects 空）`);
-      if (need === 'no-subjects' && subs.length) bad.push(`${s.id}：类别是「空镜」却写了主体 ${subs.join('、')}`);
+      if (need === 'audio' && !String(s.audio ?? '').trim()) bad.push(M('needAudio', s.id));
+      if (need === 'onscreenText' && !String(s.onscreenText ?? '').trim()) bad.push(M('needText', s.id));
+      if (need === 'subjects' && !subs.length) bad.push(M('needSubject', s.id));
+      if (need === 'no-subjects' && subs.length) bad.push(M('needEmpty', s.id, subs.join('、')));
     }
-    gates.push(gate('category-evidence', bad));
+    gates.push(gate('category-evidence', lang, bad));
   }
 
   /*
@@ -555,12 +750,12 @@ export function validate(doc, ctx = {}) {
    *
    * 只拦一个方向：**声称整幅画面在动，实测却几乎不动**——摄影机真动了，
    * 像素不可能不变，这个方向没有误拦。反过来（声称固定、实测很动）不拦：
-   * 固定机位前面有人跳舞，帧间差一样会爆，那是主体运动不是运镜。它进提示。
+   * 固定机位前面有人跳舞，帧间差一样会爆。它进提示。
    */
   {
     const track = ctx.track;
     if (!track) {
-      gates.push(gate('motion', [], '没有给 --track，跳过（视为通过）'));
+      gates.push(gate('motion', lang, [], M('skipNoTrack')));
     } else {
       const bad = [];
       for (const s of shots) {
@@ -570,14 +765,11 @@ export function validate(doc, ctx = {}) {
         if (m == null) continue;
         // 短镜采样点太少，一个尖峰就能翻案——给值不设门。
         if ((Number(s.seconds) || 0) < p.motionGateMinSeconds) continue;
-        if (move.motion === 'strong' && m < p.staticMaxMotion) {
-          bad.push(`${s.id}：写的是「${move.zh}」，实测帧间变化只有 ${m}（< ${p.staticMaxMotion}）——这一镜画面没动，重看一遍`);
-        }
-        if (move.motion === 'still' && m > p.busyMinMotion) {
-          hints.push(`${s.id}：写的是「固定」，实测帧间变化 ${m} 偏高——若是主体在动就对，若是机位在动要改运镜`);
-        }
+        const name = labelOf(CAMERA_MOVES, s.camera, lang);
+        if (move.motion === 'strong' && m < p.staticMaxMotion) bad.push(M('motionTooStill', s.id, name, m, p.staticMaxMotion));
+        if (move.motion === 'still' && m > p.busyMinMotion) hints.push(M('motionTooBusy', s.id, name, m));
       }
-      gates.push(gate('motion', bad));
+      gates.push(gate('motion', lang, bad));
     }
   }
 
@@ -588,17 +780,15 @@ export function validate(doc, ctx = {}) {
   {
     const seedCuts = doc?.seedCuts;
     if (!Array.isArray(seedCuts) || !seedCuts.length) {
-      gates.push(gate('boundary', [], '文档里没有 seedCuts，跳过（视为通过）'));
+      gates.push(gate('boundary', lang, [], M('skipNoSeed')));
     } else {
       const allowed = [0, total, ...seedCuts, ...(doc.manualCuts ?? [])].filter((t) => Number.isFinite(t));
       const near = (t) => allowed.some((a) => Math.abs(a - t) <= p.cutTolerance);
       const bad = [];
       shots.forEach((s, i) => {
-        if (i > 0 && !near(Number(s.start))) {
-          bad.push(`${s.id}：起点 ${s.start} 既不在检测切点上，也没写进 manualCuts——自己加的刀要声明`);
-        }
+        if (i > 0 && !near(Number(s.start))) bad.push(M('boundaryUndeclared', s.id, s.start));
       });
-      gates.push(gate('boundary', bad));
+      gates.push(gate('boundary', lang, bad));
     }
   }
 
@@ -606,13 +796,13 @@ export function validate(doc, ctx = {}) {
   {
     const dir = ctx.frameDir;
     if (!dir || !existsSync(dir)) {
-      gates.push(gate('frames', [], dir ? `${dir}/ 不存在，跳过（视为通过）` : '没有检查关键帧目录，跳过（视为通过）'));
+      gates.push(gate('frames', lang, [], M('skipNoFrameDir', dir)));
     } else {
       const bad = [];
       for (const s of shots) {
-        if (!existsSync(join(dir, `${s.id}a.jpg`))) bad.push(`${s.id}：缺关键帧 ${s.id}a.jpg`);
+        if (!existsSync(join(dir, `${s.id}a.jpg`))) bad.push(M('frameMissing', s.id));
       }
-      gates.push(gate('frames', bad));
+      gates.push(gate('frames', lang, bad));
     }
   }
 
@@ -655,10 +845,12 @@ const I18N = {
     catTitle: '镜头类别', catSub: '叙事功能，组织故事的推进',
     camTitle: '运镜方式', camSub: '镜头运动，传递情绪的起伏',
     note: '影片以 {size} 为主要景别，占总时长的 {sizePct}；{cat} 占 {catPct}。最长镜头为 {longest}，最短镜头为 {shortest}。',
-    castTitle: '人物与镜头', castCaption: '{n} 位人物 · 点击查看相关分镜', castShots: '查看 {n} 个相关镜头',
+    castTitle: '人物与镜头', castCaption: '{n} 位人物 · 点击查看相关分镜',
+    castShots: '查看 {n} 个相关镜头', castShotsOne: '查看 1 个相关镜头',
     qualityOk: '{n} 项质量检查全部通过', qualityBad: '{n} 项质量检查未通过',
     qualityNote: '时间轴、关键帧与镜头标注全部由脚本确定性校验',
-    hintTitle: '{n} 条待复核提示', close: '关闭大图', lightboxHint: '← → 切换首尾帧　·　ESC 关闭',
+    hintTitle: '{n} 条待复核提示', hintTitleOne: '1 条待复核提示',
+    close: '关闭大图', lightboxHint: '← → 切换首尾帧　·　ESC 关闭',
     noscript: '请启用 JavaScript 以浏览交互式报告。原始数据也可在同目录的 shots.json 和 shots.md 中查看。',
 
   },
@@ -692,10 +884,12 @@ const I18N = {
     catTitle: 'Category', catSub: 'Narrative function — what the shot is for',
     camTitle: 'Camera', camSub: 'Movement — how the emotion travels',
     note: 'Mostly {size}, {sizePct} of the runtime; {cat} accounts for {catPct}. Longest shot {longest}, shortest {shortest}.',
-    castTitle: 'Cast and shots', castCaption: '{n} people · click to filter', castShots: 'See {n} shots',
+    castTitle: 'Cast and shots', castCaption: '{n} in the cast · click to filter',
+    castShots: 'See {n} shots', castShotsOne: 'See 1 shot',
     qualityOk: 'All {n} quality gates passed', qualityBad: '{n} quality gates failed',
     qualityNote: 'Timeline, keyframes and annotations are all checked deterministically by the script',
-    hintTitle: '{n} hints to review', close: 'Close', lightboxHint: '← → switch first/last frame　·　ESC to close',
+    hintTitle: '{n} hints to review', hintTitleOne: '1 hint to review',
+    close: 'Close', lightboxHint: '← → switch first/last frame　·　ESC to close',
     noscript: 'Enable JavaScript for the interactive report. The raw data is in shots.json and shots.md next to this file.',
 
   },
@@ -718,14 +912,15 @@ export function renderMd(doc, ctx = {}) {
   out.push(`# ${name} · ${t.title}`, '');
   out.push(`- ${t.total}${t.colon}${st.totalSeconds} ${t.sec}${t.sep}${t.shots}${t.colon}${st.count}${t.sep}${t.rate}${t.colon}${st.cutsPerMinute}`);
   out.push(`- ${t.avg}${t.colon}${st.avgSeconds} ${t.sec}${t.sep}${t.median}${t.colon}${st.medianSeconds} ${t.sec}${t.sep}${t.range}${t.colon}${st.minSeconds} / ${st.maxSeconds} ${t.sec}`);
-  if (doc.meta) out.push(`- ${doc.meta.width}×${doc.meta.height}（${doc.meta.aspect}）· ${doc.meta.fps} fps · ${doc.meta.hasAudio ? t.sound : t.mute}`);
+  const paren = (x) => (lang === 'en' ? ` (${x})` : `（${x}）`);
+  if (doc.meta) out.push(`- ${doc.meta.width}×${doc.meta.height}${paren(doc.meta.aspect)} · ${doc.meta.fps} fps · ${doc.meta.hasAudio ? t.sound : t.mute}`);
   out.push('');
   const TABLE_OF = { [t.size]: SHOT_SIZES, [t.category]: SHOT_CATEGORIES, [t.camera]: CAMERA_MOVES };
   for (const [label, rows] of [[t.size, st.sizes], [t.category, st.categories], [t.camera, st.cameras]]) {
-    out.push(`**${label}**（${t.counts}）${t.colon}${rows.map((r) => `${labelOf(TABLE_OF[label] ?? {}, r.key, lang)} ${r.count}${t.shotsUnit} · ${st.totalSeconds ? Math.round((r.seconds / st.totalSeconds) * 100) : 0}%`).join(t.sep)}`);
+    out.push(`**${label}**${paren(t.counts)}${t.colon}${rows.map((r) => `${labelOf(TABLE_OF[label] ?? {}, r.key, lang)} ${r.count}${t.shotsUnit} · ${st.totalSeconds ? Math.round((r.seconds / st.totalSeconds) * 100) : 0}%`).join(t.sep)}`);
   }
   out.push('', `## ${t.table}`, '');
-  out.push(`| # | 起—止 | ${t.sec} | ${t.size} | ${t.category} | ${t.camera} | ${t.frame} | ${t.subjects} | ${t.text} | ${t.audio} |`);
+  out.push(`| # | ${t.span} | ${t.sec} | ${t.size} | ${t.category} | ${t.camera} | ${t.frame} | ${t.subjects} | ${t.text} | ${t.audio} |`);
   out.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const s of doc.shots ?? []) {
     const cell = (x) => String(x ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
@@ -985,7 +1180,7 @@ ${(doc.cast ?? []).length ? `<details class="report-section" id="cast">
       </div>
     </div>
     <ul class="gates">${gateItems}</ul>
-    ${v.hints.length ? `<div class="hint"><b>${esc(t.hintTitle.replace('{n}', v.hints.length))}</b>${hintItems}</div>` : ''}
+    ${v.hints.length ? `<div class="hint"><b>${esc(v.hints.length === 1 ? t.hintTitleOne : t.hintTitle.replace('{n}', v.hints.length))}</b>${hintItems}</div>` : ''}
   </div>
 </details>
 
@@ -1017,6 +1212,8 @@ ${readAsset('report.js')}
 /* ------------------------------------------------------------------ */
 
 const USAGE = `video-shots.mjs — video-shots skill 的确定性工具（拉片）
+
+  所有命令都认 --lang zh|en（默认中文）：门的名字、违规信息、命令行输出跟着切
 
   seed <video> [--threshold 0.3] [--min 0.3] [--track track.json] [--title 片名]
       场景检测 + 运动曲线 → 工作底稿 shots.json（stdout）。切点和时长在这一步定死。
@@ -1081,6 +1278,7 @@ function loadCtx(rest, doc) {
 }
 
 function cmdSeed(rest) {
+  const M = msgs(flag(rest, '--lang'));
   const video = rest[0];
   if (!video) throw new Error('seed 要一个视频文件');
   const threshold = Number(flag(rest, '--threshold', DEFAULT_PARAMS.sceneThreshold));
@@ -1095,12 +1293,13 @@ function cmdSeed(rest) {
   });
   const trackOut = flag(rest, '--track');
   if (typeof trackOut === 'string' && track) writeFileSync(trackOut, JSON.stringify(track));
-  process.stderr.write(`[seed] ${meta.durationSeconds}s / ${meta.fps}fps / ${meta.width}x${meta.height} → 检测 ${cuts.length} 个切点，合并后 ${doc.shots.length} 镜\n`);
-  if (typeof trackOut === 'string' && track) process.stderr.write(`[seed] 运动曲线 → ${trackOut}（${track.values.length} 个采样点 @ ${track.hz}Hz）\n`);
+  process.stderr.write(`${M('cliSeed', meta.durationSeconds, meta.fps, meta.width, meta.height, cuts.length, doc.shots.length)}\n`);
+  if (typeof trackOut === 'string' && track) process.stderr.write(`${M('cliTrack', trackOut, track.values.length, track.hz)}\n`);
   process.stdout.write(`${JSON.stringify(doc, null, 2)}\n`);
 }
 
 function cmdFrames(rest) {
+  const M = msgs(flag(rest, '--lang'));
   const doc = readJson(rest[0]);
   const video = flag(rest, '--video');
   if (typeof video !== 'string') throw new Error('frames 要 --video <视频文件>');
@@ -1121,14 +1320,15 @@ function cmdFrames(rest) {
           '-frames:v', '1', '-vf', `scale=${width}:-2`, '-q:v', '3', out], { stdio: 'ignore' });
         n += 1;
       } catch {
-        process.stderr.write(`[frames] ${s.id}${suffix} 抽帧失败，跳过\n`);
+        process.stderr.write(`${M('cliFrameFail', `${s.id}${suffix}`)}\n`);
       }
     }
   }
-  process.stderr.write(`[frames] ${n} 张 → ${dir}/\n`);
+  process.stderr.write(`${M('cliFrames', n, dir)}\n`);
 }
 
 function cmdSheet(rest) {
+  const M = msgs(flag(rest, '--lang'));
   const doc = readJson(rest[0]);
   const dir = typeof flag(rest, '--dir') === 'string' ? flag(rest, '--dir') : paramsOf(doc).frameDir;
   const cols = Number(flag(rest, '--cols', 5));
@@ -1148,16 +1348,17 @@ function cmdSheet(rest) {
       execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', listFile,
         '-vf', `scale=320:-2,tile=${cols}x${rows}:padding=4:margin=4:color=white`,
         '-frames:v', '1', '-q:v', '3', out], { stdio: 'ignore' });
-      made.push(`${out}（${batch[0]}–${batch[batch.length - 1]}，行优先）`);
+      made.push(M('cliSheet', out, batch[0], batch[batch.length - 1]));
     } catch {
-      process.stderr.write(`[sheet] ${out} 生成失败，跳过\n`);
+      process.stderr.write(`${M('cliSheetFail', out)}\n`);
     }
     rmSync(listFile, { force: true });
   }
-  process.stderr.write(made.length ? `[sheet] ${made.join('\n[sheet] ')}\n` : `[sheet] 没有可用的 ${pick} 帧，先跑 frames\n`);
+  process.stderr.write(made.length ? `${made.join('\n')}\n` : `${M('cliSheetNone', pick)}\n`);
 }
 
 function cmdRecut(rest) {
+  const M = msgs(flag(rest, '--lang'));
   const doc = readJson(rest[0]);
   const trackPath = flag(rest, '--track');
   const track = typeof trackPath === 'string' ? readJson(trackPath) : null;
@@ -1165,8 +1366,8 @@ function cmdRecut(rest) {
   const merges = flags(rest, '--merge').map(Number);
   if (!splits.length && !merges.length) throw new Error('recut 至少要一个 --split 或 --merge');
   const next = recut(doc, { splits, merges, track });
-  process.stderr.write(`[recut] ${doc.shots.length} 镜 → ${next.shots.length} 镜（补 ${splits.length} 刀 / 并 ${merges.length} 刀）\n`);
-  if (!track) process.stderr.write('[recut] 没给 --track，新镜头的实测运动是空的\n');
+  process.stderr.write(`${M('cliRecut', doc.shots.length, next.shots.length, splits.length, merges.length)}\n`);
+  if (!track) process.stderr.write(`${M('cliRecutNoTrack')}\n`);
   process.stdout.write(`${JSON.stringify(next, null, 2)}\n`);
 }
 
@@ -1179,14 +1380,15 @@ function cmdValidate(rest) {
     process.stdout.write(`${mark} ${g.label}${g.skipped ? `　（${g.skipped}）` : ''}\n`);
     for (const issue of g.issues) process.stdout.write(`   · ${issue}\n`);
   }
+  const M = msgs(ctx.lang);
   if (v.hints.length) {
-    process.stdout.write('\n提示（不拦）：\n');
+    process.stdout.write(`\n${M('cliHints')}\n`);
     for (const h of v.hints) process.stdout.write(`   · ${h}\n`);
   }
   const st = stats(doc);
-  process.stdout.write(`\n${st.count} 镜 / ${st.totalSeconds} 秒 / 平均 ${st.avgSeconds} 秒 / 每分钟 ${st.cutsPerMinute} 切\n`);
+  process.stdout.write(`\n${M('cliSummary', st.count, st.totalSeconds, st.avgSeconds, st.cutsPerMinute)}\n`);
   if (!v.ok) {
-    process.stdout.write(`\n${v.failed.length} 道门没过，逐条修完重跑。\n`);
+    process.stdout.write(`\n${M('cliFailed', v.failed.length)}\n`);
     process.exitCode = 1;
   }
 }
@@ -1225,6 +1427,9 @@ function isMainModule() {
 }
 
 if (isMainModule()) {
+  // 下游把管道关了（`| head`）就安静退出，不要吐一屏 EPIPE 栈
+  process.stdout.on('error', (err) => { if (err.code === 'EPIPE') process.exit(0); });
+  process.stderr.on('error', () => {});
   try {
     main(process.argv.slice(2));
   } catch (err) {

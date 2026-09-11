@@ -4,6 +4,7 @@
 frames/
 sheets/
 !demo-report/**
+!demo-report-en/**
 
 .DS_Store
 node_modules/

@@ -35,6 +35,7 @@ cd reelbench-skills
 
 `demo-report/` 是拿 `demo-video.mp4`（202.9 秒的 AI 短片《啥是AI》）真跑出来的**完整产物**：
 53 镜、平均镜长 3.83 秒、每分钟 15.7 切、14 道质量门全绿。
+`demo-report-en/` 是同一套流程跑一条 30 秒英文广告片的产物（`--lang en`，报告全英文）。
 
 [![拉片报告](skills/video-shots/assets/report.png)](demo-report/shots-report.html)
 

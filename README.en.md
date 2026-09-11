@@ -37,7 +37,8 @@ each skill is self-contained.
 
 `demo-report/` is the **real output** of running the skill on `demo-video.mp4`
 (a 202.9-second AI-generated short film, *啥是AI*): 53 shots, 3.83 s average shot length,
-15.7 cuts per minute, all 14 gates green.
+15.7 cuts per minute, all 14 gates green. `demo-report-en/` is the same pipeline run on a
+30-second English commercial with `--lang en` — an entirely English report.
 
 [![Shot breakdown report](skills/video-shots/assets/report.png)](demo-report/shots-report.html)
 

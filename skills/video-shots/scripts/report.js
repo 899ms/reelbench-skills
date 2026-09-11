@@ -239,7 +239,7 @@ if ($('cast-grid')) {
     return `<article class="cast-card">${shot ? fimg(shot, 'a') : `<div class="frame-missing" style="aspect-ratio:7/3">${W.missing}</div>`}`
       + `<div><h3>${esc(c.name)} <span class="mono muted" style="font-size:10px;margin-left:7px">${esc(c.id)}</span></h3>`
       + `<p>${esc(c.note ?? '')}</p>`
-      + `<button data-cast="${esc(c.id)}">${esc(W.castShots.replace('{n}', n))} ${icon('right')}</button></div></article>`;
+      + `<button data-cast="${esc(c.id)}">${esc(n === 1 ? W.castShotsOne : W.castShots.replace('{n}', n))} ${icon('right')}</button></div></article>`;
   }).join('');
   document.querySelectorAll('[data-cast]').forEach((b) => {
     b.onclick = () => {

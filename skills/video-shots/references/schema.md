@@ -62,7 +62,8 @@
 | `staticMaxMotion` | 1.5 | 实测低于它 = 画面几乎没动（运镜门的拦截线） |
 | `busyMinMotion` | 12 | 实测高于它 = 动得厉害（只出提示，不拦） |
 | `motionGateMinSeconds` | 1 | 短于它的镜头不查运镜（采样点太少，一个尖峰就能翻案） |
-| `minFrameChars` | 12 | 画面描述的最低字数 |
+| `minFrameChars` | 12 | **中文**画面描述的最低字数 |
+| `minFrameWords` | 8 | **英文**画面描述的最低词数。按描述本身的语言选用哪一条 |
 | `trackHz` | 5 | 运动曲线采样率 |
 | `frameDir` | `frames` | 关键帧目录 |
 

@@ -73,7 +73,7 @@ node scripts/video-shots.mjs recut shots.json --track track.json \
 | 镜号纪律 | `S01` 起、两位补零、连号——镜号就是关键帧文件名 |
 | 景别 / 类别 / 运镜 | 三张词表逐个对账，空着不填也拦 |
 | 转场枚举 | 可省略；写了就得在表里 |
-| **画面描述可核对** | 12 字起 + 空话词表（「氛围感」「视觉冲击」…）+ 不许「这个镜头…」开头 |
+| **画面描述可核对** | 够长（中文 ≥12 字 / 英文 ≥8 词）+ 空话词表（「氛围感」/ "visually stunning"）+ 不许「这个镜头…」/ "This shot…" 开头 |
 | **画面描述不重复** | 两镜一字不差 = 没看第二眼 |
 | 主体对账 | `subjects` 的编号必须在 `cast` 里；没建 cast **明说跳过** |
 | **类别要有证据** | 对话必须有台词、字卡必须有画面文字、反应必须写是谁在反应、空镜里不许有人 |
@@ -85,7 +85,7 @@ node scripts/video-shots.mjs recut shots.json --track track.json \
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 160 项断言全部通过（14 道门每道都有击穿用例）
+# ✅ 379 项断言全部通过（14 道门每道都有击穿用例）
 ```
 
 ## 用法
@@ -112,6 +112,10 @@ node scripts/video-shots.mjs render shots.json --md   --track track.json > shots
 node scripts/video-shots.mjs render shots.json --html --track track.json \
   --video ../video.mp4 > shots-report.html
 ```
+
+所有命令都认 `--lang zh|en`：门的名字、违规信息、命令行输出、报告界面、四张词表全跟着切。
+**画面描述的判据跟着描述本身的语言走**——中文数字数（≥12 字），英文数词数（≥8 词），
+空话词表（「氛围感」/ "visually stunning"）和废话开头（「这个镜头…」/ "This shot…"）各一套。
 
 依赖：`node` >= 18（只用标准库）+ `ffmpeg` / `ffprobe`。**零 npm 依赖、零 API key。**
 

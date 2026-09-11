@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
-  DEFAULT_PARAMS, SHOT_SIZES, SHOT_CATEGORIES, CAMERA_MOVES, TRANSITIONS, VAGUE_WORDS,
+  DEFAULT_PARAMS, SHOT_SIZES, SHOT_CATEGORIES, CAMERA_MOVES, TRANSITIONS,
+  VAGUE_WORDS, VAGUE_WORDS_EN, MESSAGE_KEYS, msgs, gateLabel,
   buildSeed, recut, validate, stats, medianMotion, fmtTime, shotNo, renderMd, renderHtml, paramsOf,
 } from './video-shots.mjs';
 
@@ -560,6 +561,81 @@ const cfgOf = (html) => JSON.parse(html.split('\n').find((l) => l.startsWith('co
   const posterless = renderHtml(baseDoc(), CTX());
   ok(!posterless.includes('poster='), '没抽帧就不设封面');
   ok(renderHtml(baseDoc(), { ...CTX(), frameExists: { S01a: true } }).includes('poster="frames/S01a.jpg"'), '有首帧就当封面');
+}
+
+/* ------------------------------------------------------------------ */
+/* 中英文案：门的名字、违规信息、命令行输出都跟着 --lang 走               */
+/* ------------------------------------------------------------------ */
+{
+  const zh = validate(baseDoc(), CTX());
+  const en = validate(baseDoc(), { ...CTX(), lang: 'en' });
+  eq(zh.gates[0].label, '时间轴连续', '中文门名');
+  eq(en.gates[0].label, 'Timeline is continuous', '英文门名');
+  for (const g of en.gates) ok(!/[一-鿿]/.test(g.label), `英文门名里不该有中文：${g.label}`);
+  for (const g of en.gates) ok(!g.skipped || !/[一-鿿]/.test(g.skipped), `英文跳过原因里不该有中文：${g.skipped}`);
+  eq(gateLabel('motion', 'en'), 'Camera vs. measured motion', 'gateLabel 直接取名字');
+  eq(gateLabel('motion', undefined), '运镜实测对账', '不给语言就中文');
+
+  // 违规信息本身也得跟着切
+  const broken = baseDoc();
+  broken.shots[1].size = 'closeup';
+  broken.shots[1].seconds = 99;
+  const issues = validate(broken, { ...CTX(), lang: 'en' }).failed.flatMap((g) => g.issues);
+  ok(issues.length >= 2, '英文模式下照样报出违规');
+  for (const i of issues) ok(!/[一-鿿]/.test(i), `英文违规信息里不该有中文：${i}`);
+
+  // 每一条文案，中英两套都得在，且不能是复制粘贴
+  ok(MESSAGE_KEYS.length > 30, `文案键至少 30 条（实际 ${MESSAGE_KEYS.length}）`);
+  const args = ['S01', 2, 3, 4, 5, 6];
+  for (const key of MESSAGE_KEYS) {
+    const z = msgs('zh')(key, ...args);
+    const e = msgs('en')(key, ...args);
+    ok(typeof z === 'string' && z.length > 0, `zh 文案缺失：${key}`);
+    ok(typeof e === 'string' && e.length > 0, `en 文案缺失：${key}`);
+    ok(z !== e, `${key} 的中英文案一模一样，八成是漏翻了`);
+    ok(!/[一-鿿]/.test(e), `en 文案里混了中文：${key} → ${e}`);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 英文片：画面描述的判据跟着**描述本身的语言**走，不跟着界面语言走        */
+/* ------------------------------------------------------------------ */
+{
+  const en = (frame) => {
+    const doc = baseDoc();
+    doc.cast = [];
+    doc.shots = [{
+      id: 'S01', start: 0, end: 10, seconds: 10, size: 'wide', category: 'subject', camera: 'static',
+      transitionIn: 'cut', subjects: [], frame, onscreenText: '', audio: '', motion: 0.5,
+    }];
+    doc.seedCuts = [];
+    return validate(doc, { lang: 'en' }).gates.find((g) => g.id === 'frame-text');
+  };
+
+  ok(en('A snow-covered meat rack fills the yard, carcasses swaying on iron hooks').ok,
+    '像样的英文描述放行');
+  ok(!en('An old woman talks').ok, '五个单词的英文描述太短——中文的 12 字判据在这里等于没门');
+  eq(DEFAULT_PARAMS.minFrameWords, 8, '英文按词数，不按字符数');
+  for (const word of ['visually stunning', 'atmospheric', 'breathtaking']) {
+    ok(!en(`The yard is ${word} in the cold morning light, hooks and carcasses everywhere`).ok,
+      `英文空话「${word}」照拦`);
+  }
+  ok(!en('This shot shows an old woman crossing the frozen yard toward the counter').ok,
+    '英文废话开头「This shot…」照拦');
+  ok(!en('We see an old woman crossing the frozen yard toward the wooden counter').ok,
+    '「We see…」也是废话开头');
+  ok(VAGUE_WORDS_EN.length >= 10, '英文空话词表至少 10 个');
+
+  // 一条违规只报一次：stunning 被 visually stunning 包住
+  const hits = en('The yard looks visually stunning under the cold grey sky of winter').issues
+    .filter((i) => i.includes('leans on'));
+  eq(hits.length, 1, '短词被长词包住时不重复点名');
+
+  // 中文描述在英文界面下仍按中文判据
+  const zhText = baseDoc();
+  zhText.shots[0].frame = '雪地木架上挂着冻肉，氛围感很强';
+  const g = validate(zhText, { lang: 'en' }).gates.find((x) => x.id === 'frame-text');
+  ok(!g.ok && g.issues.some((i) => i.includes('氛围感')), '中文描述照中文词表查，只是信息用英文说');
 }
 
 /* ------------------------------------------------------------------ */

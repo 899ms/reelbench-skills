@@ -88,7 +88,7 @@ against is worthless.**
 | Shot numbering | Starts at `S01`, zero-padded, no gaps — the number *is* the keyframe filename |
 | Size / category / camera | Three vocabularies checked term by term; left blank is also a failure |
 | Transition enum | Optional; if written, it must be in the table |
-| **Frame description is checkable** | At least 12 characters, no filler words ("atmospheric", "visually stunning"…), no "this shot…" openers |
+| **Frame description is checkable** | Long enough (≥ 12 Chinese characters / ≥ 8 English words), no filler ("氛围感" / "visually stunning"…), no "这个镜头…" / "This shot…" openers |
 | **No duplicate descriptions** | Two shots word-for-word identical = nobody looked twice |
 | Subject reconciliation | Every id in `subjects` must exist in `cast`; with no cast, the gate **says it is skipping** |
 | **Categories need evidence** | Dialogue needs a line, a title card needs on-screen text, a reaction needs a subject, an empty shot may not contain people |
@@ -100,7 +100,7 @@ Every gate has a **breaking test case** in the self-test, proving it really bloc
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 160 assertions passed (every one of the 14 gates has a breaking case)
+# ✅ 379 assertions passed (every one of the 14 gates has a breaking case)
 ```
 
 ## Usage
@@ -128,9 +128,14 @@ node scripts/video-shots.mjs render shots.json --html --track track.json \
   --video ../video.mp4 > shots-report.html
 ```
 
-Report UI language: `--lang zh|en` (default Chinese; precedence is `--lang` > the `lang` field
-in the JSON > Chinese). It switches **labels only** — descriptions, dialogue and names written
-by the model are left exactly as they are.
+`--lang zh|en` works on **every command** (default Chinese; precedence is `--lang` > the `lang`
+field in the JSON > Chinese): gate names, violation messages, CLI output, the report UI and all
+four vocabularies switch together. It switches **labels only** — descriptions, dialogue and names
+written by the model are left exactly as they are.
+
+The frame-description gate follows **the language of the description itself**, not the UI
+language: Chinese is counted in characters (≥ 12), English in words (≥ 8), and each has its own
+filler list ("氛围感" / "visually stunning") and its own banned openers ("这个镜头…" / "This shot…").
 
 Requirements: `node` >= 18 (standard library only) + `ffmpeg` / `ffprobe`.
 **No npm dependencies, no API keys.**
