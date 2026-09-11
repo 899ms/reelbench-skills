@@ -1,0 +1,1188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f7f3"><title>啥是AI · 拉片报告</title>
+<style>
+/* video-shots 拉片报告的样式表。
+ *
+ * 这份文件就是报告的设计本身——改它就能改报告，不用动 JS，也不用动生成器。
+ * render 时被整段内联进 HTML，产物仍然是**单文件、零外部依赖、离线双击能开**。
+ *
+ * 配色：纸白 #f7f8f4 + 深绿 #285444 + 嫩绿 #dceba7。景别的色阶在 JS 的 CFG.colors 里，
+ * 由 SHOT_SIZES 的 color 字段生成，时间轴与图例共用，改一处两处都跟着变。
+ */
+
+:root{--bg:#f7f8f4;--white:#fff;--ink:#202b28;--muted:#7b837d;--line:#e2e6df;--green:#285444;--lime:#dceba7;--soft:#edf1e8;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+*{box-sizing:border-box}
+html{scroll-behavior:auto}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select{font:inherit}
+button,a,input,select{-webkit-tap-highlight-color:transparent}
+button,a{color:inherit}
+button{cursor:pointer}
+button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:white;border-radius:7px;padding:8px 13px;transition:background .15s,border-color .15s}
+button:hover{background:var(--soft);border-color:#c4cebd}
+button:disabled{opacity:.35;cursor:default}
+a{text-decoration:none}
+:focus-visible{outline:2px solid var(--green);outline-offset:4px}
+svg.icon{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+[hidden]{display:none!important}
+.local-dot{display:inline-block;width:6px;height:6px;background:#6b8b4d;border-radius:50%;margin-right:7px}
+.export{font-size:11px;padding:7px 11px}
+.content{max-width:1560px;margin:auto;padding:32px 36px 24px}
+h1{font-size:32px;line-height:1.3;letter-spacing:-1px;margin:9px 0 9px;font-weight:620}
+h1 span{font-weight:400;font-size:22px;color:#a1a797;margin:0 12px}
+h1 small{font-size:23px;font-weight:420;letter-spacing:0}
+.metadata{display:flex;align-items:center;gap:12px;color:#8b938a;font-size:11px}
+.metadata i{height:3px;width:3px;background:#b6beb1;border-radius:50%}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);padding:21px 0 24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:27px}
+.stat{padding:0 24px;border-left:1px solid var(--line)}
+.stat:first-child{padding-left:0;border:0}
+.stat-label{font-size:10px;color:#87907f;display:block;margin-bottom:7px}
+.stat b{font-size:25px;font-weight:500;letter-spacing:-1px;line-height:1.2;font-family:var(--mono)}
+.stat b small{font:11px -apple-system,sans-serif;letter-spacing:0;color:#969e8e;margin-left:4px}
+.stat.range b{font-size:16px;letter-spacing:-.9px;white-space:nowrap}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin:0 0 14px;gap:12px}
+h2{font-size:15px;font-weight:600;margin:0;display:flex;align-items:center;gap:9px}
+h2 .index{font:10px var(--mono);color:#9ba792;font-weight:400;margin-right:3px}
+.section-caption{font-size:10px;color:#8c9585}
+.workspace{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(280px,1fr);gap:20px}
+.viewer{border-radius:10px;overflow:hidden;background:#18211d;min-width:0;display:flex;flex-direction:column}
+.viewer-heading{height:43px;padding:0 16px;display:flex;justify-content:space-between;align-items:center;color:#e6eddf;font-size:11px}
+.viewer-heading .muted{color:#a2ae9f;font:10px var(--mono)}
+.stage{position:relative;aspect-ratio:7/3;background:#101713;display:grid;place-items:center}
+.stage>img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0}
+.stage video{width:100%;height:100%;position:absolute;inset:0;background:#000}
+.frame-label{position:absolute;top:13px;left:14px;color:white;font:9px var(--mono);letter-spacing:1px;background:#16201888;border:1px solid #ffffff38;border-radius:3px;padding:3px 7px}
+.expand{position:absolute;right:12px;top:12px;background:#16201866;border-color:#ffffff38;color:white;padding:5px;border-radius:4px}
+.expand:hover{background:#27382b}
+.viewer-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#e4eadf;padding:11px 15px;flex:1;min-height:48px}
+.viewer-controls button{padding:4px 8px;background:transparent;border:0;color:#e4eadf;font-size:10px}
+.viewer-controls button:hover{background:#ffffff15}
+.control-left{display:flex;align-items:center;gap:8px}
+.timecode{font:10px var(--mono);color:#b0beaa}
+.frame-switch{display:flex;gap:2px;padding:3px;background:#ffffff0a;border-radius:5px}
+.frame-switch button[aria-pressed=true]{background:#4b6048;color:#e5f2ce}
+.inspector{border:1px solid var(--line);background:#fff;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;min-width:0}
+.inspector-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.shot-id{font:20px var(--mono);letter-spacing:-1px}
+.shot-id small{font:10px -apple-system,sans-serif;color:var(--muted);margin-left:10px}
+.duration{font:11px var(--mono);color:#5b704c;background:#eef3e7;border-radius:4px;padding:3px 7px}
+.tags{display:flex;gap:7px;flex-wrap:wrap}
+.tag{font-size:10px;padding:3px 8px;border-radius:4px;background:#f1f3ed;color:#6e7769}
+.tag.size{background:#edf1e1;color:#607046}
+.tag.cam{background:#edf3f0;color:#577b6c}
+.detail-label{font-size:9px;letter-spacing:1px;color:#9aa18f;margin:17px 0 5px}
+.description{margin:0;font-size:12px;line-height:1.9;color:#4c584b}
+.dialogue{font-size:11px;color:#708065;line-height:1.8;padding:10px 12px;border-left:2px solid #c5d0a9;background:#f7f9f2;margin-top:13px}
+.detail-foot{border-top:1px solid #eef0ea;margin-top:auto;padding-top:12px;display:flex;justify-content:space-between;color:#8b9585;font-size:10px;gap:8px}
+.detail-foot b{font-weight:400;color:#526346}
+.timeline-panel{margin:20px 0 28px;border:1px solid var(--line);background:white;border-radius:9px;padding:16px 19px}
+.timeline-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px}
+.timeline-top h3{font-size:11px;font-weight:550;margin:0}
+.timeline-top span{color:#9aa290;font-size:9px}
+.timeline{display:flex;height:34px;gap:2px;align-items:end}
+.segment{height:100%;min-width:2px;flex-shrink:1;padding:0;border:0;border-radius:2px;background:var(--color);position:relative}
+.segment:hover{background:var(--color);filter:brightness(.85)}
+.segment.selected{outline:2px solid #35583c;outline-offset:2px;z-index:1}
+.segment.selected:before{content:"";position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);border:3px solid transparent;border-bottom-color:#35583c}
+.timeline-ticks{display:flex;justify-content:space-between;margin-top:11px;font:9px var(--mono);color:#9aa28f}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:9px;color:#8d967f;justify-content:flex-end;margin-top:13px}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+.legend i{width:7px;height:7px;border-radius:2px;background:var(--color)}
+.library{scroll-margin-top:20px}
+.library-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px}
+.library-header h2 small{font:10px var(--mono);padding:2px 6px;background:#e9edde;border-radius:4px;color:#7e8f66}
+.library-tools{display:flex;align-items:center;gap:9px}
+.search{display:flex;gap:7px;align-items:center;border:1px solid var(--line);background:white;border-radius:6px;padding:6px 10px}
+.search svg{width:14px;height:14px;color:#929b88}
+.search input{width:172px;font-size:10px;border:0;outline:none;background:transparent;color:var(--ink)}
+.search:focus-within{outline:2px solid #8caa74}
+.views{display:flex;gap:2px;border:1px solid var(--line);padding:3px;background:#fff;border-radius:6px}
+.views button{border:0;background:none;padding:3px 5px;color:#9aa58d}
+.views button.active{background:#e9eedf;color:#496137}
+.views svg{width:14px;height:14px}
+.filterbar{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);margin-bottom:20px;padding-bottom:10px}
+.filters{display:flex;gap:5px;flex-wrap:wrap}
+.filters button{font-size:10px;padding:5px 11px;border-color:transparent;background:transparent;color:#8a947e}
+.filters button.active{background:#2d5141;color:#f1f5e9;border-color:#2d5141}
+.filter-right{display:flex;align-items:center;gap:12px}
+.filter-right span{font-size:10px;color:#8b967e;white-space:nowrap}
+select{max-width:150px;font-size:10px;background:transparent;border:0;color:#6f7d62;padding:4px;cursor:pointer}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:19px 16px}
+.shot-card{text-align:left;display:block;border:1px solid var(--line);padding:0;background:white;border-radius:8px;overflow:hidden;min-width:0;scroll-margin-top:22px;color:var(--ink)}
+.shot-card:hover{background:white;border-color:#aab899;box-shadow:0 4px 18px #25362209;transform:translateY(-2px)}
+.shot-card.selected{border-color:#648451;box-shadow:0 0 0 1px #648451}
+.card-image{aspect-ratio:7/3;position:relative;background:#172019;overflow:hidden}
+.card-image img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
+.shot-card:hover .card-image img{transform:scale(1.025)}
+.card-image .number{position:absolute;left:9px;top:9px;background:#111c1599;color:#fff;font:9px var(--mono);padding:2px 6px;border-radius:3px}
+.card-image .seconds{position:absolute;right:8px;bottom:8px;background:#111c15b3;color:#fff;font:9px var(--mono);padding:2px 5px;border-radius:3px}
+.selected-mark{position:absolute;right:8px;top:8px;border-radius:50%;width:17px;height:17px;background:var(--lime);color:#34512f;display:grid;place-items:center;font-size:10px}
+.card-body{padding:11px 12px 12px}
+.card-meta{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#8d967f}
+.card-meta .tag{font-size:9px;padding:1px 6px}
+.card-desc{font-size:11px;line-height:1.75;margin:9px 0 10px;color:#56604e;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px}
+.card-bottom{display:flex;justify-content:space-between;gap:5px;color:#a1aa97;font-size:9px}
+.cards.list{grid-template-columns:1fr}
+.cards.list .shot-card{display:grid;grid-template-columns:220px 1fr}
+.cards.list .card-image{height:100%;min-height:104px}
+.cards.list .card-body{padding:14px 20px}
+.cards.list .card-desc{min-height:0;margin:7px 0}
+.empty{text-align:center;border:1px dashed #ccd4c0;border-radius:8px;padding:50px 20px;color:#8a947d}
+.empty button{margin-top:14px;font-size:11px}
+.footer{border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;margin-top:32px;padding-top:16px;color:#9aa28e;font-size:9px;letter-spacing:.3px}
+.analysis-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.analysis-card{border:1px solid var(--line);border-radius:10px;background:white;padding:23px}
+.analysis-card h3{font-size:13px;font-weight:500;margin:0 0 6px}
+.analysis-card>p{font-size:10px;color:var(--muted);margin:0 0 23px}
+.dist-row{margin:18px 0}
+.dist-label{display:flex;justify-content:space-between;font-size:11px;color:#6e7b62;margin-bottom:7px}
+.dist-label small{font:10px var(--mono);color:#89987c}
+.bar-bg{height:7px;background:#f0f3eb;border-radius:3px;overflow:hidden}
+.bar-bg i{display:block;height:100%;background:#9cab75;border-radius:3px}
+.analysis-note{padding:22px 25px;background:#eaf0de;border-radius:9px;margin-bottom:23px;color:#63774f;font-size:12px}
+.analysis-note b{color:#344c2d}
+.gates{padding:0;margin:22px 0;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.gates li{padding:17px 18px;border:1px solid var(--line);border-radius:7px;background:white}
+.gates b{font-size:12px;font-weight:400}
+.gates .tag{float:right;color:#6c8556;background:#eff4e7}
+.gates .tag:before{content:"✓ ";margin-right:3px}
+.quality-banner{padding:27px;border:1px solid #d7e2c6;background:#eef4e5;border-radius:10px;display:flex;align-items:center;gap:18px}
+.quality-check{display:grid;place-items:center;width:48px;height:48px;border:1px solid #bccfa5;border-radius:50%;font-size:24px;color:#718d54}
+.quality-banner h3{margin:0;font-size:18px;font-weight:500}
+.quality-banner p{font-size:11px;color:#859473;margin:5px 0 0}
+.hint{background:#faf4e7;border:1px solid #ece1c6;color:#927a47;padding:18px 21px;border-radius:8px;font-size:12px;line-height:1.9}
+.hint button{padding:1px 7px;font-size:11px;margin:0 4px;background:#fffaf0;color:#927a47;border-color:#e8d8b3}
+.cast-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.cast-card{background:white;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.cast-card img{width:100%;aspect-ratio:7/3;object-fit:cover;display:block}
+.cast-card div{padding:18px}
+.cast-card h3{font-size:14px;font-weight:500;margin:0}
+.cast-card p{font-size:11px;color:#8a957d;margin:6px 0 15px}
+.cast-card button{font-size:10px}
+dialog{border:1px solid #54614e;padding:0;background:#111a13;color:white;max-width:90vw;width:1040px;border-radius:10px}
+dialog::backdrop{background:#0b120de6;backdrop-filter:blur(6px)}
+.lightbox-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;font:12px var(--mono)}
+dialog img{width:100%;display:block;max-height:77vh;object-fit:contain}
+dialog button{background:#253323;border-color:#3f503a;color:#fff;padding:5px 10px}
+.dialog-hint{font-size:10px;color:#98aa90;text-align:center;padding:12px}
+noscript{display:block;padding:30px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:10px 20px;background:#284935;color:#fff;border-radius:6px;z-index:10;font-size:12px}
+
+@media(min-width:1600px){.stage{aspect-ratio:2.45}
+.description{font-size:13px}
+.inspector{padding:22px 25px}
+}
+
+@media(max-width:1180px){.content{padding:26px 25px}
+.stat{padding:0 12px}
+.stat b{font-size:21px}
+.stat.range b{font-size:16px}
+.workspace{grid-template-columns:minmax(0,1.5fr) minmax(270px,1fr)}
+.cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.inspector{padding:15px}
+.detail-label{margin-top:10px}
+.dialogue{margin-top:9px}
+.analysis-grid{grid-template-columns:1fr}
+.analysis-card{padding:20px}
+.dist-row{margin:12px 0}
+}
+
+@media(max-width:900px){.workspace{grid-template-columns:1fr}
+.inspector{display:grid;grid-template-columns:1fr 1fr;column-gap:20px}
+.inspector-head,.detail-foot{grid-column:1/-1}
+.inspector-head{margin-bottom:10px}
+.detail-label{display:none}
+.description{grid-row:2/4;grid-column:2}
+.dialogue{grid-column:1/-1;margin-bottom:12px}
+.detail-foot{margin-top:12px}
+.stats{grid-template-columns:repeat(3,1fr);gap:20px 0}
+.stat:nth-child(4){border:0;padding-left:0}
+.gates,.cast-grid{grid-template-columns:repeat(2,1fr)}
+.cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(max-width:600px){.export{font-size:10px;padding:5px 8px}
+.content{padding:24px 18px}
+h1{font-size:28px}
+h1 small{font-size:19px}
+h1 span{margin:0 8px}
+.metadata{font-size:9px;gap:8px}
+.stats{padding:18px 0;gap:20px 0;margin-bottom:23px}
+.stat b{font-size:20px}
+.stat-label{font-size:9px}
+.stat.range b{font-size:12px;letter-spacing:-.6px}
+.section-caption{display:none}
+.workspace{gap:12px}
+.viewer-heading{font-size:10px;height:38px;padding:0 12px}
+.viewer-controls{padding:10px 8px}
+.timecode{font-size:9px}
+.frame-switch button{font-size:9px;padding:4px 6px}
+.inspector{display:flex;padding:16px}
+.detail-label{display:block}
+.description{margin-top:3px}
+.detail-foot{margin-top:5px}
+.timeline-panel{padding:14px 12px;margin:15px 0 24px}
+.timeline{gap:1px;height:28px}
+.timeline-top span{font-size:8px}
+.legend{gap:9px;font-size:8px;justify-content:flex-start}
+.library-header{flex-wrap:wrap}
+.library-tools{width:100%}
+.search{flex:1}
+.search input{width:100%}
+.filterbar{display:block}
+.filters{gap:2px}
+.filters button{padding:5px 8px}
+.filter-right{justify-content:space-between;margin-top:9px}
+.cards{gap:14px 10px}
+.card-body{padding:9px}
+.card-desc{font-size:10px}
+.card-meta{font-size:8px}
+.card-bottom{font-size:8px}
+.card-image .number{left:6px;top:6px;font-size:8px}
+.card-image .seconds{font-size:8px;right:5px;bottom:5px}
+.cards.list .shot-card{grid-template-columns:115px 1fr}
+.cards.list .card-body{padding:10px}
+.cards.list .card-image{min-height:120px}
+.cards.list .card-desc{-webkit-line-clamp:2}
+.gates,.cast-grid{grid-template-columns:1fr}
+.quality-banner{padding:20px}
+.quality-banner h3{font-size:16px}
+.footer{font-size:8px;align-items:center}
+.footer span:last-child{text-align:right}
+.stage{min-height:145px}
+dialog{max-width:96vw}
+}
+
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}
+}
+
+@media print{.viewer-controls,.library-tools,.filterbar,.expand,.frame-switch,dialog,#toast{display:none!important}
+.content{padding:0}
+.page[hidden]{display:block!important}
+.page{margin-top:25px}
+.shot-card{break-inside:avoid}
+.cards{grid-template-columns:repeat(3,1fr)}
+.workspace{display:block}
+.viewer{max-width:70%;margin-bottom:15px}
+.inspector{display:block}
+.timeline-panel{break-inside:avoid}
+body{background:white}
+.gates{grid-template-columns:repeat(3,1fr)}
+}
+
+
+/* Compact report: the shot list is the primary reading surface. */
+.sidebar{width:164px;padding:20px 11px}
+.content{padding:17px 22px 18px;max-width:1800px}
+h1{font-size:24px;margin:0 0 5px;line-height:1.2}
+h1 small{font-size:16px}
+h1 span{font-size:18px}
+.metadata{font-size:10px}
+.stats{margin-bottom:13px;padding:11px 0 12px}
+.stat{padding:0 16px}
+.stat-label{margin-bottom:3px;font-size:9px}
+.stat b{font-size:21px}
+.stat.range b{font-size:15px}
+.section-title{margin-bottom:9px}
+h2{font-size:13px}
+.section-caption{font-size:9px}
+.preview-section-title{margin-bottom:8px}
+.preview-section-title h2{font-size:11px;font-weight:450;color:#76816d}
+.preview-section-title .section-caption{display:none}
+.preview-toggle{padding:3px 9px;font-size:10px;border-radius:4px}
+.workspace{grid-template-columns:minmax(0,1fr) minmax(300px,1fr);gap:12px;margin-bottom:10px}
+.viewer{border-radius:6px;max-height:240px}
+.viewer-heading{height:29px;flex-shrink:0;padding:0 12px;font-size:10px}
+.stage{aspect-ratio:auto;height:170px;min-height:0;flex:1}
+.viewer-controls{min-height:31px;flex:0;padding:5px 9px}
+.inspector{border-radius:6px;padding:12px 15px}
+.inspector-head{margin-bottom:8px}
+.shot-id{font-size:17px}
+.detail-label{margin-top:8px;margin-bottom:3px;font-size:8px}
+.description{font-size:11px;line-height:1.65}
+.dialogue{padding:6px 9px;margin-top:8px;font-size:10px}
+.detail-foot{padding-top:7px;font-size:9px}
+.tags{gap:5px}
+.tag{padding:1px 6px}
+.timeline-panel{margin:0 0 14px;padding:9px 12px;border-radius:6px}
+.timeline-top{margin-bottom:7px}
+.timeline-top h3{font-size:10px}
+.timeline-top span{font-size:9px}
+.timeline{height:23px}
+.timeline-ticks{margin-top:7px;font-size:8px}
+.legend{margin-top:6px;font-size:8px;gap:12px}
+.library-header{margin-bottom:8px}
+.library-header h2{font-size:13px}
+.filterbar{padding-bottom:7px;margin-bottom:0}
+.filters button{padding:3px 9px;font-size:10px}
+.search{padding:4px 8px}
+.search input{font-size:10px}
+.views{padding:2px}
+.filter-right span{font-size:9px}
+.cards{gap:10px;padding-top:10px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.card-body{padding:8px 10px}
+.card-desc{font-size:10px;line-height:1.6;min-height:32px;margin:6px 0}
+.card-bottom{font-size:8px}
+.card-image .number{font-size:9px;top:5px;left:5px}
+.card-image .seconds{font-size:8px;bottom:5px;right:5px}
+.shot-card:hover{transform:none;box-shadow:none}
+.list-head{display:grid;grid-template-columns:202px 86px 93px minmax(0,1fr) minmax(0,.9fr);gap:12px;padding:7px 10px;font-size:9px;color:#87937b;background:#eef1e8;border-bottom:1px solid var(--line)}
+.row-content{display:none}
+.cards.list{display:block;padding:0;border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;overflow:hidden}
+.cards.list .shot-card{display:grid;grid-template-columns:202px minmax(0,1fr);gap:12px;border:0;border-bottom:1px solid var(--line);border-radius:0;width:100%;padding:8px 10px;align-items:center;background:#fff;min-height:64px}
+.cards.list .shot-card:nth-child(even){background:#fafbf7}
+.cards.list .shot-card:last-child{border-bottom:0}
+.cards.list .shot-card:hover{background:#f0f4e8}
+.cards.list .shot-card.selected{background:#edf3e4;box-shadow:inset 3px 0 #5c7c40}
+.cards.list .card-image{height:auto;min-height:0;aspect-ratio:14/3;display:flex;gap:3px;background:transparent;border-radius:3px}
+.cards.list .card-image img{width:calc(50% - 1.5px);height:100%;object-fit:cover;border-radius:3px}
+.frame-b{display:none!important}
+.cards.list .frame-b{display:block!important}
+.cards.list .card-body{display:none}
+.cards.list .row-content{display:grid;grid-template-columns:86px 93px minmax(0,1fr) minmax(0,.9fr);gap:12px;align-items:center;text-align:left}
+.row-time{font:9px/1.8 var(--mono);color:#7d8a71}
+.row-time b{display:block;color:#46583c;font-size:11px;font-weight:500}
+.row-tags{display:flex;align-items:flex-start;flex-wrap:wrap;gap:3px 4px}
+.row-tags .tag{font-size:9px}
+.row-subject{font-size:9px;color:#929d85;display:block;width:100%;margin-top:3px;line-height:1.4}
+.row-desc{font-size:11px;line-height:1.7;color:#505e45}
+.row-audio{font-size:10px;line-height:1.7;color:#839174}
+.row-audio span{color:#a0aa95;font-size:9px}
+.row-audio .audio-text{display:block}
+.row-audio .audio-text+.audio-text{margin-top:4px}
+.footer{margin-top:18px;padding-top:10px}
+.analysis-grid{gap:12px}
+.analysis-card{padding:17px}
+.dist-row{margin:12px 0}
+.analysis-note{padding:13px 17px;margin-bottom:13px;font-size:11px}
+.gates{gap:8px;margin:12px 0;grid-template-columns:repeat(4,1fr)}
+.gates li{padding:10px 12px}
+.gates b{font-size:11px}
+.quality-banner{padding:15px 20px}
+.quality-banner h3{font-size:16px}
+.quality-check{width:36px;height:36px;font-size:20px}
+.hint{padding:12px 16px;font-size:11px}
+.cast-grid{gap:12px}
+.cast-card div{padding:12px}
+.cast-card p{margin-bottom:9px}
+
+@media(min-width:1500px){.cards{grid-template-columns:repeat(5,minmax(0,1fr))}
+.cards.list .shot-card{grid-template-columns:242px minmax(0,1fr)}
+.list-head{grid-template-columns:242px 96px 100px minmax(0,1fr) minmax(0,.9fr)}
+.cards.list .row-content{grid-template-columns:96px 100px minmax(0,1fr) minmax(0,.9fr)}
+}
+
+@media(max-width:1100px){.list-head{grid-template-columns:176px 76px 80px minmax(0,1fr) minmax(0,.85fr);gap:10px}
+.cards.list .shot-card{grid-template-columns:176px minmax(0,1fr);gap:10px}
+.cards.list .row-content{grid-template-columns:76px 80px minmax(0,1fr) minmax(0,.85fr);gap:10px}
+.row-desc{font-size:10px}
+.row-time{font-size:8px}
+.workspace{grid-template-columns:1fr 1fr}
+.inspector{display:flex}
+.description{margin:0}
+.gates{grid-template-columns:repeat(3,1fr)}
+}
+
+@media(max-width:760px){.content{padding:14px}
+.stats{gap:12px 0}
+.stat{padding:0 12px}
+.stat b{font-size:19px}
+.stat.range b{font-size:14px}
+.cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+.list-head{grid-template-columns:128px 68px 1fr}
+.list-head span:nth-child(3),.list-head span:nth-child(5){display:none}
+.cards.list .shot-card{grid-template-columns:128px minmax(0,1fr);gap:9px;min-height:87px;padding:7px}
+.cards.list .card-image{aspect-ratio:7/3.6}
+.cards.list .row-content{grid-template-columns:68px minmax(0,1fr);gap:6px 9px}
+.row-tags{grid-row:2;grid-column:1}
+.row-time{grid-row:1;grid-column:1}
+.row-desc{grid-column:2;grid-row:1/3;font-size:10px}
+.row-audio{display:none}
+.row-tags .tag:not(.size),.row-subject{display:none}
+.workspace{grid-template-columns:1fr}
+.viewer{height:220px}
+.inspector{display:flex}
+.gates{grid-template-columns:repeat(2,1fr)}
+}
+
+@media(max-width:600px){h1{font-size:21px}
+h1 small{font-size:13px}
+h1 span{font-size:16px;margin:0 7px}
+.metadata{font-size:8px;gap:7px}
+.stats{grid-template-columns:repeat(3,1fr);padding:10px 0;gap:10px 0;margin-bottom:10px}
+.stat-label{font-size:8px}
+.stat b{font-size:18px}
+.stat.range b{font-size:12px}
+.stat b small{font-size:9px}
+.preview-section-title{margin-bottom:7px}
+.timeline-panel{padding:8px 9px;margin-bottom:11px}
+.timeline-top span:not(.mono){display:none}
+.timeline{height:18px}
+.legend{gap:8px;font-size:7px;margin-top:5px}
+.timeline-ticks{font-size:7px}
+.library-header{gap:8px;margin-bottom:6px}
+.library-tools{width:auto}
+.search{width:147px;flex:none;padding:3px 6px}
+.search input{width:115px;font-size:9px}
+.views{display:none}
+.filterbar{padding-bottom:6px}
+.filters button{font-size:9px;padding:3px 8px}
+.filter-right{margin-top:5px}
+.list-head{grid-template-columns:92px 52px minmax(0,1fr);gap:8px;padding:5px 7px;font-size:8px}
+.cards.list .shot-card{grid-template-columns:92px minmax(0,1fr);gap:8px;min-height:79px;padding:6px}
+.cards.list .card-image{aspect-ratio:7/4.5;min-height:58px}
+.cards.list .card-image img{width:100%;object-fit:cover}
+.cards.list .frame-b{display:none!important}
+.cards.list .row-content{grid-template-columns:52px minmax(0,1fr);gap:3px 8px}
+.row-time{font-size:7px;line-height:1.65}
+.row-time b{font-size:9px}
+.row-tags .tag{font-size:8px;padding:0 4px}
+.row-desc{font-size:9px;line-height:1.65}
+.card-image .number{font-size:8px;left:4px;top:4px}
+.card-image .seconds{font-size:7px;bottom:4px;right:4px}
+.selected-mark{width:13px;height:13px;font-size:8px;right:4px;top:4px}
+.cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+.gates{grid-template-columns:1fr}
+.workspace{margin-bottom:8px}
+.viewer{height:210px}
+.footer{font-size:7px}
+.export{font-size:9px;padding:4px 7px}
+}
+
+
+
+@media(min-width:761px){.content{padding:12px 20px}
+h1{font-size:21px;margin:0}
+h1 small{font-size:14px}
+.metadata{font-size:9px}
+.stats{padding:8px 0 9px;margin-bottom:9px}
+.stat b{font-size:19px}
+.stat-label{font-size:8px;margin-bottom:2px}
+.stat.range b{font-size:14px}
+.timeline-panel{padding:7px 11px;margin-bottom:10px}
+.timeline{height:19px}
+.legend{display:none}
+.timeline-top{margin-bottom:5px}
+.timeline-ticks{margin-top:5px}
+.cards.list .shot-card{padding:6px 10px}
+.library-header{margin-bottom:6px}
+.filterbar{padding-bottom:5px}
+.list-head{padding-top:5px;padding-bottom:5px}
+.card-image .number{font-size:8px}
+.row-desc{font-size:11px}
+.preview-section-title{margin-bottom:6px}
+.shot-card.selected{scroll-margin-top:10px}
+}
+
+
+/* Standalone skill output: one report document with optional appendices. */
+.report{margin:0}
+.content{max-width:1440px;padding:14px 20px;margin:0 auto}
+.report-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
+.report-heading{display:flex;align-items:center;gap:20px;min-width:0}
+.report-header h1{font-size:22px;white-space:nowrap;margin:0;line-height:1.3;letter-spacing:-.5px}
+.report-header h1 small{font-size:13px;font-weight:400;color:#87917c;letter-spacing:0;margin-left:8px}
+.report-header .metadata{font-size:10px;gap:9px}
+.report-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.report-status{font-size:10px;color:#788b65}
+.report-index{display:flex;align-items:center;gap:14px;margin-bottom:9px;font-size:10px}
+.report-index>span{font-size:9px}
+.report-index button{border:0;border-radius:0;background:none;padding:0;color:#5d7050;font-size:10px}
+.report-index button:hover{text-decoration:underline;background:none}
+.report-index button span{font:9px var(--mono);color:#9aa48c;margin-left:-3px}
+.report-section{border-top:1px solid var(--line);margin-top:12px;scroll-margin-top:12px}
+.report-section summary{padding:10px 0;font-size:12px;font-weight:500;cursor:pointer;color:#596b4c}
+.report-section-body{padding:4px 0 9px}
+.report-section .section-title{margin-bottom:10px}
+.report-section .analysis-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.report-section .cast-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.report-section .cast-card img{height:90px;object-fit:cover}
+.report-section .quality-banner{padding:10px 14px}
+.report-section .quality-banner h3{font-size:14px}
+.report-section .quality-banner p{font-size:10px}
+.report-section .quality-check{width:28px;height:28px;font-size:16px}
+.footer{margin-top:10px}
+
+@media(max-width:900px){.report-heading{display:block}
+.report-header .metadata{margin-top:5px;font-size:9px}
+.report-status{display:none}
+.report-section .analysis-grid{grid-template-columns:1fr}
+.report-section .cast-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(max-width:600px){.content{padding:10px 12px}
+.report-header{gap:7px;align-items:flex-start;margin-bottom:8px}
+.report-header h1{font-size:20px}
+.report-header h1 small{font-size:12px;margin-left:5px}
+.report-header .metadata{font-size:8px;gap:6px;flex-wrap:wrap}
+.report-actions{padding-top:2px}
+.report-actions button{font-size:9px;white-space:nowrap;padding:4px 7px}
+.report-actions svg{width:13px;height:13px}
+.report-index{gap:12px;margin-bottom:8px;flex-wrap:wrap;font-size:9px}
+.report-index>span{display:none}
+.report-index button{font-size:9px}
+.report-section .cast-grid{grid-template-columns:1fr}
+}
+
+@media print{.report-index,.report-actions{display:none}
+.report-section>summary{display:block}
+.report-section-body{content-visibility:visible!important;display:block!important}
+.report-section::details-content{content-visibility:visible!important;display:block!important}
+.content{max-width:none;padding:0}
+}
+
+
+.report-player{display:grid;grid-template-columns:minmax(260px,360px) minmax(0,1fr);gap:14px;margin:10px 0;padding:9px;border:1px solid var(--line,#dce2d6);border-radius:6px;background:var(--panel,#fff);scroll-margin-top:8px}
+
+.player-media{min-width:0;background:#111713;border-radius:4px;overflow:hidden;display:flex;align-items:center}
+
+#report-video{display:block;width:100%;height:180px;background:#111713;object-fit:contain}
+
+.player-info{min-width:0;display:flex;flex-direction:column;gap:5px;padding:1px 4px}
+
+.player-heading{display:flex;gap:10px;align-items:center;font-size:11px}
+.player-heading b{font-weight:550}
+.player-heading>span{color:#849179;font-size:9px}
+
+.player-file{margin-left:auto;position:relative;display:inline-block;overflow:hidden;border:1px solid var(--line,#dce2d6);border-radius:4px;padding:2px 8px;background:white;font-size:10px;cursor:pointer;color:#586b49;white-space:nowrap}
+.player-file:focus-within{outline:2px solid #647e49;outline-offset:2px}
+.player-file input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+
+.player-current,.player-range{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10px;color:#7a886d}
+.player-current strong{font:600 14px ui-monospace,monospace;color:#344f27;margin-left:6px}
+.player-current output{font:10px ui-monospace,monospace;color:#4e643b}
+.player-range span{font:10px ui-monospace,monospace}
+.player-range b{font:11px ui-monospace,monospace;color:#4a6534}
+
+#player-progress{display:block;width:100%;height:4px;border:0;border-radius:3px;overflow:hidden;accent-color:#769357;background:#edf0e5}
+#player-progress::-webkit-progress-bar{background:#edf0e5}
+#player-progress::-webkit-progress-value{background:#769357}
+
+#player-description,#player-dialogue{margin:0;font-size:11px;line-height:1.6;color:#526247}
+#player-dialogue{font-size:10px;color:#7b896d}
+.player-help{margin-top:auto;font-size:9px;color:#8e9b80}
+#player-error{margin:0;color:#976534;font-size:10px}
+
+[data-player-segment]{position:relative;overflow:visible}
+[data-player-segment].is-current{outline:2px solid #41622f;outline-offset:2px;z-index:1}
+[data-player-segment].is-current:after{content:"";position:absolute;inset:0 auto 0 0;width:var(--played,0%);background:#ffffff70;pointer-events:none}
+
+[data-player-shot]{cursor:pointer;scroll-margin-top:8px}
+[data-player-shot].is-current,[data-player-shot].is-current td{background:#e9f1df!important}
+[data-player-shot].is-current{box-shadow:inset 3px 0 #668348!important}
+[data-player-shot].is-current .row-time b,[data-player-shot].is-current td.tm b{color:#34551e;background:#d7e8c2;border-radius:3px;padding:1px 4px}
+
+@media(max-width:700px){.report-player{grid-template-columns:1fr;gap:8px;padding:7px}
+#report-video{height:164px}
+.player-info{gap:4px}
+.player-help{font-size:8px}
+#player-description{font-size:10px}
+#player-dialogue{font-size:9px}
+}
+
+@media print{.report-player{display:none}
+}
+
+/* 缺关键帧时的占位：不猜、不骗，明说这一格没有图 */
+.frame-missing{display:grid;place-items:center;width:100%;height:100%;background:#1b241d;
+  color:#9aa892;font:9px var(--mono);text-align:center;line-height:1.4;border-radius:3px}
+.cards.list .card-image .frame-missing{width:calc(50% - 1.5px);height:100%}
+.card-image .frame-missing{position:absolute;inset:0;width:100%}
+.cards.list .card-image{position:relative}
+
+/* 质量门的三种状态：通过 / 未通过 / 跳过。跳过不是通过，把原因写出来 */
+.gates li.bad{border-color:#e0c3b8;background:#fdf6f3}
+.gates li.bad .tag{color:#9a4b31;background:#f7e4dc}
+.gates li.bad .tag:before{content:"✕ "}
+.gates li.skip{background:#f7f8f4}
+.gates li.skip .tag{color:#8a9285;background:#eceee7}
+.gates li.skip .tag:before{content:"— "}
+.gates .gate-note{font-size:10px;color:#8f9788;margin-top:6px;line-height:1.6}
+.gates ul{margin:7px 0 0;padding-left:16px;font-size:10px;line-height:1.7;color:#9a4b31}
+.quality-banner.bad{border-color:#e6cabe;background:#fbf1ec}
+.quality-banner.bad .quality-check{border-color:#dcb5a5;color:#a6563a}
+.hint p{margin:7px 0 0}
+
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true"><defs>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 15v5h16v-5"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M9 5h12M9 12h12M9 19h12M3 5h1M3 12h1M3 19h1"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></symbol>
+</defs></svg>
+<div class="report">
+<main class="content">
+
+<header class="report-header">
+  <div class="report-heading">
+    <h1>啥是AI <small>拉片报告</small></h1>
+    <div class="metadata">
+      <span>demo-video.mp4</span><i></i>
+      <span class="mono">1680 × 720</span><i></i>
+      <span class="mono">30 fps</span><i></i>
+      <span>7:3 · 有声</span>
+    </div>
+  </div>
+  <div class="report-actions">
+    <span class="report-status">14 项通过 · 1 条提示</span>
+    <button class="export" id="export"><svg class="icon"><use href="#i-download"/></svg>导出 JSON</button>
+  </div>
+</header>
+
+<nav class="report-index" aria-label="报告内容">
+  <span class="muted">报告内容</span>
+  <button data-page="overview">镜头明细 <span>53</span></button>
+  <button data-page="analysis">统计分布</button>
+  <button data-page="cast">出场人物 <span>6</span></button>
+  <button data-page="quality">质量检查 <span>14</span></button>
+</nav>
+
+<div class="stats" id="stats"></div>
+
+<div class="page" id="overview">
+  <section class="report-player" aria-label="原视频">
+    <div class="player-media">
+      <video id="report-video" controls playsinline preload="metadata" aria-label="原视频" src="../demo-video.mp4" poster="frames/S01a.jpg"></video>
+    </div>
+    <div class="player-info">
+      <div class="player-heading">
+        <b>原视频</b>
+        <span id="player-state" role="status">就绪</span>
+        <label class="player-file">选择本地视频<input id="player-file" type="file" accept="video/*" aria-label="选择本地视频"></label>
+      </div>
+      <div class="player-current"><span>当前镜头 <strong id="player-shot">—</strong></span><output id="player-clock">00:00.00</output></div>
+      <div class="player-range"><span id="player-range">—</span><b id="player-duration">—</b></div>
+      <progress id="player-progress" value="0" max="1" aria-label="当前镜头播放进度"></progress>
+      <p id="player-description"></p>
+      <p id="player-dialogue"></p>
+      <div class="player-help">播放同步高亮镜头与时长 · 点击镜头跳转 · 点击关键帧放大</div>
+      <p id="player-error" role="status" hidden></p>
+    </div>
+  </section>
+
+  <div class="timeline-panel">
+    <div class="timeline-top">
+      <h3>镜头节奏带 <span class="mono" style="margin-left:9px">SHOT TIMELINE</span></h3>
+      <span>宽度表示时长 · 深浅表示景别 · 点击跳到该镜</span>
+    </div>
+    <div class="timeline" id="timeline" aria-label="镜头节奏带"></div>
+    <div class="timeline-ticks"><span>00:00</span><span>00:40</span><span>01:20</span><span>02:00</span><span>02:40</span><span>03:22.90</span></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <section class="library" id="library">
+    <div class="library-header">
+      <h2>镜头表 <small>53</small></h2>
+      <div class="library-tools">
+        <label class="search"><svg class="icon"><use href="#i-search"/></svg>
+          <input id="search" type="search" placeholder="搜索镜号、画面、台词…" aria-label="搜索镜号、画面、台词…"></label>
+        <div class="views" aria-label="视图切换">
+          <button id="grid-view" aria-label="卡片视图" aria-pressed="false"><svg class="icon"><use href="#i-grid"/></svg></button>
+          <button class="active" id="list-view" aria-label="列表视图" aria-pressed="true"><svg class="icon"><use href="#i-list"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="filterbar">
+      <div class="filters" id="filters"></div>
+      <div class="filter-right">
+        <span id="result-count" aria-live="polite"></span>
+        <select id="sort" aria-label="镜头排序">
+          <option value="timeline">按时间顺序</option>
+          <option value="longest">镜头时长 · 由长到短</option>
+          <option value="shortest">镜头时长 · 由短到长</option>
+        </select>
+      </div>
+    </div>
+    <div class="list-head" id="list-head">
+      <span>镜号 / 首尾关键帧</span><span>时间 / 时长</span><span>景别 / 运镜</span>
+      <span>画面</span><span>文字 · 声音</span>
+    </div>
+    <div class="cards list" id="cards"></div>
+    <div class="empty" id="empty" hidden>没有找到匹配的镜头<br><button id="reset">清除筛选</button></div>
+  </section>
+</div>
+
+<details class="report-section" id="analysis">
+  <summary>统计分布</summary>
+  <div class="report-section-body">
+    <div class="section-title"><h2>景别、类别与运镜</h2><span class="section-caption">占比按镜头时长计算</span></div>
+    <div class="analysis-note" id="analysis-note"></div>
+    <div class="analysis-grid" id="distributions"></div>
+  </div>
+</details>
+
+<details class="report-section" id="cast">
+  <summary>出场人物</summary>
+  <div class="report-section-body">
+    <div class="section-title"><h2>人物与镜头</h2><span class="section-caption">6 位人物 · 点击查看相关分镜</span></div>
+    <div class="cast-grid" id="cast-grid"></div>
+  </div>
+</details>
+
+<details class="report-section" id="quality">
+  <summary>质量检查</summary>
+  <div class="report-section-body">
+    <div class="quality-banner">
+      <div class="quality-check">✓</div>
+      <div>
+        <h3>14 项质量检查全部通过</h3>
+        <p>时间轴、关键帧与镜头标注全部由脚本确定性校验</p>
+      </div>
+    </div>
+    <ul class="gates"><li class="ok"><b>时间轴连续</b><span class="tag">通过</span></li><li class="ok"><b>时长自洽</b><span class="tag">通过</span></li><li class="ok"><b>镜号纪律</b><span class="tag">通过</span></li><li class="ok"><b>景别枚举</b><span class="tag">通过</span></li><li class="ok"><b>类别枚举</b><span class="tag">通过</span></li><li class="ok"><b>运镜枚举</b><span class="tag">通过</span></li><li class="ok"><b>转场枚举</b><span class="tag">通过</span></li><li class="ok"><b>画面描述可核对</b><span class="tag">通过</span></li><li class="ok"><b>画面描述不重复</b><span class="tag">通过</span></li><li class="ok"><b>主体对账</b><span class="tag">通过</span></li><li class="ok"><b>类别要有证据</b><span class="tag">通过</span></li><li class="ok"><b>运镜实测对账</b><span class="tag">通过</span></li><li class="ok"><b>边界来自检测</b><span class="tag">通过</span></li><li class="ok"><b>关键帧齐全</b><span class="tag">通过</span></li></ul>
+    <div class="hint"><b>1 条待复核提示</b><p><button data-shot="S46">S46 ↗</button> 写的是「固定」，实测帧间变化 12.3 偏高——若是主体在动就对，若是机位在动要改运镜</p></div>
+  </div>
+</details>
+
+<footer class="footer">
+  <span>video-shots · 拉片报告</span>
+  <span>53 镜 · 106 关键帧 · 2026-09-11</span>
+</footer>
+</main>
+</div>
+
+<dialog id="lightbox" aria-label="关键帧">
+  <div class="lightbox-head"><span id="lightbox-title"></span><button id="close-lightbox" aria-label="关闭大图">✕</button></div>
+  <img id="lightbox-img" alt="">
+  <div class="dialog-hint">← → 切换首尾帧　·　ESC 关闭</div>
+</dialog>
+<div id="toast" role="status" hidden></div>
+<noscript>请启用 JavaScript 以浏览交互式报告。原始数据也可在同目录的 shots.json 和 shots.md 中查看。</noscript>
+<script>
+const DOC={"source":"demo-video.mp4","title":"啥是AI","lang":"zh","meta":{"durationSeconds":202.9,"fps":30,"width":1680,"height":720,"aspect":"7:3","codec":"h264","hasAudio":true},"params":{"sceneThreshold":0.15,"minShotSeconds":0.3},"seedCuts":[0.9,1.23,1.4,2.97,7.13,10.77,19.27,21.77,33.57,37.33,45.63,45.97,46.03,46.13,46.2,46.73,48.2,48.9,50.37,50.8,51.63,57.7,59.6,61.67,69.03,72.77,75.93,79.43,83.23,90.7,92.33,100.8,105.3,108.37,114.03,116.73,121.13,130.07,135.1,142.17,145.57,148.07,156.47,172.53,176.33,180.63],"manualCuts":[63.5,127.37,133.83,183.23,186.07,190.33,193.3,195.87,198,199.73],"cast":[{"id":"P1","name":"老太太","note":"主角，儿子在城里的农村母亲"},{"id":"P2","name":"老中医","note":"村里药铺坐堂"},{"id":"P3","name":"屠夫","note":"雪地肉摊"},{"id":"P4","name":"神婆","note":"烛台八卦图前算命"},{"id":"P5","name":"村里男人","note":"帮老太太看手机的中年男人"},{"id":"P6","name":"儿子","note":"城里戴眼镜的年轻人，双屏电脑前"}],"shots":[{"id":"S01","start":0,"end":0.9,"seconds":0.9,"motion":27.8,"size":"wide","category":"subject","camera":"tracking","transitionIn":"cut","subjects":["P1"],"frame":"土屋门洞逆光，老太太扶着门框往外冲，门板和灶台在前景糊成虚影","onscreenText":"","audio":""},{"id":"S02","start":0.9,"end":1.23,"seconds":0.33,"motion":39.9,"size":"wide","category":"subject","camera":"tracking","transitionIn":"cut","subjects":["P1"],"frame":"雪坡土路上老太太弓背小跑，镜头贴在她侧后方跟着，人和雪面都拖出动态模糊","onscreenText":"","audio":""},{"id":"S03","start":1.23,"end":2.97,"seconds":1.74,"motion":15.5,"size":"wide","category":"establishing","camera":"tracking","transitionIn":"cut","subjects":["P1","P2"],"frame":"药铺内景，老太太背对镜头跑向柜台，柜台后老中医低头写方，左侧炉上水壶冒白汽","onscreenText":"","audio":""},{"id":"S04","start":2.97,"end":7.13,"seconds":4.16,"motion":2.2,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P1","P2"],"frame":"越过老中医的肩头拍老太太，她双手撑在柜台上探身往前说话，身后是结霜的木窗","onscreenText":"","audio":"老太太：老李，给我拿最猛的药。我儿子在城里染上 AI 了"},{"id":"S05","start":7.13,"end":10.77,"seconds":3.64,"motion":2.1,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P2"],"frame":"老中医坐在中药柜前，钢笔停在处方纸上，抬眼从眼镜上方看过来","onscreenText":"","audio":"老中医：咳？还是癌？"},{"id":"S06","start":10.77,"end":19.27,"seconds":8.5,"motion":1.1,"size":"medium-close","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P1"],"frame":"老太太伏在柜台边上，一只手按着台面，嘴张着还在往下说，窗外是雪地反光","onscreenText":"","audio":"老太太：他说天天喂它。／旁白：事情的起因，来自我的一通电话"},{"id":"S07","start":19.27,"end":21.77,"seconds":2.5,"motion":8.55,"size":"wide","category":"establishing","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"黑白画面，村口空地上老太太举斧劈柴，左上角压着时间字幕","onscreenText":"十分钟前","audio":""},{"id":"S08","start":21.77,"end":33.57,"seconds":11.8,"motion":4.7,"size":"medium","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"黑白画面，老太太站在断墙和雪地之间，手机贴着耳朵笑，肩上还扛着刚才的柴","onscreenText":"","audio":"儿子（电话）：妈，最近换了新工作……我最近可忙"},{"id":"S09","start":33.57,"end":37.33,"seconds":3.76,"motion":1.6,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P1","P2"],"frame":"老太太侧脸对着柜台，眉头拧着，前景是老中医虚化的手臂","onscreenText":"","audio":"老太太：你说俺儿子要是治不好，可咋办呢"},{"id":"S10","start":37.33,"end":45.63,"seconds":8.3,"motion":1.7,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P2"],"frame":"老中医摘下眼镜停在半空，嘴角下撇，背景是砖墙上剥落的蓝漆","onscreenText":"","audio":"老中医：那到底啥是 AI 啊"},{"id":"S11","start":45.63,"end":45.97,"seconds":0.34,"motion":53.7,"size":"wide","category":"subject","camera":"static","transitionIn":"cut","subjects":["P3"],"frame":"雪后山村的露天肉摊，屠夫站在木架前把砍刀高高扬起，身后是灰白山坡和平房","onscreenText":"","audio":""},{"id":"S12","start":45.97,"end":46.73,"seconds":0.76,"motion":6.4,"size":"close","category":"insert","camera":"static","transitionIn":"cut","subjects":[],"frame":"案板上整扇猪肉被刀背压住，刀刃切进肥膘，肉面弹了一下","onscreenText":"","audio":""},{"id":"S13","start":46.73,"end":48.2,"seconds":1.47,"motion":3.4,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"老太太站在挂满猪肉的架子中间，两侧的肉块把她框在中央","onscreenText":"","audio":"老太太：没身子"},{"id":"S14","start":48.2,"end":48.9,"seconds":0.7,"motion":7.1,"size":"medium-wide","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P3"],"frame":"屠夫隔着肉架把刀举过头顶，嘴里还在应话，远处是雪山轮廓","onscreenText":"","audio":"屠夫：天天喂"},{"id":"S15","start":48.9,"end":50.37,"seconds":1.47,"motion":2.7,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"老太太仰起下巴追问，视线越过镜头看向画外的屠夫，身后的肉块轻轻晃","onscreenText":"","audio":"老太太：还能替人干活"},{"id":"S16","start":50.37,"end":50.8,"seconds":0.43,"motion":33.9,"size":"close","category":"insert","camera":"static","transitionIn":"cut","subjects":[],"frame":"圆木墩上一根带血的猪骨，砍刀从画面右侧劈下来钉在骨头旁边","onscreenText":"","audio":""},{"id":"S17","start":50.8,"end":51.63,"seconds":0.83,"motion":5.6,"size":"medium-close","category":"reaction","camera":"static","transitionIn":"cut","subjects":["P1"],"frame":"老太太在同一机位上抿住嘴点头，眼睛往下瞟，没再说话","onscreenText":"","audio":""},{"id":"S18","start":51.63,"end":57.7,"seconds":6.07,"motion":0.4,"size":"medium","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P3"],"frame":"屠夫把刀尖朝镜头点了两下，围裙上全是血污，身后山坡上是成排的平房","onscreenText":"","audio":"屠夫：你得找人看看"},{"id":"S19","start":57.7,"end":59.6,"seconds":1.9,"motion":1,"size":"medium-close","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P4"],"frame":"神婆坐在昏暗屋里，背后墙上挂着阴阳八卦图，画面左下角一支红烛","onscreenText":"","audio":"神婆：你儿子说那玩意叫啥"},{"id":"S20","start":59.6,"end":61.67,"seconds":2.07,"motion":0.9,"size":"medium-close","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P1"],"frame":"老太太在斜射的光柱里侧坐着，空气里全是浮尘，脸只被照亮一半","onscreenText":"","audio":"老太太：说是叫啥……哎"},{"id":"S21","start":61.67,"end":63.5,"seconds":1.83,"motion":8.3,"size":"close","category":"insert","camera":"handheld","transitionIn":"cut","subjects":["P4"],"frame":"烛台边的旧书和放大镜，神婆枯瘦的手按在纸面上一寸寸往前推","onscreenText":"","audio":""},{"id":"S22","start":63.5,"end":69.03,"seconds":5.53,"motion":3.1,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P4"],"frame":"神婆在烛火后抬起脸，眼白外翻，嘴张开停在半路","onscreenText":"","audio":"神婆：挨啊……这是被缠上了"},{"id":"S23","start":69.03,"end":72.77,"seconds":3.74,"motion":4.1,"size":"medium-close","category":"reaction","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"老太太双手撑在桌沿上整个人往前扑，眼睛瞪圆，额头青筋鼓出来","onscreenText":"","audio":"老太太：啥？这可咋办啊"},{"id":"S24","start":72.77,"end":75.93,"seconds":3.16,"motion":7.25,"size":"wide","category":"subject","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"冬天的田埂小路上老太太独自站着，手里捏着一张折过的纸条，远处是光秃的树和电线杆","onscreenText":"","audio":""},{"id":"S25","start":75.93,"end":79.43,"seconds":3.5,"motion":0.2,"size":"medium","category":"establishing","camera":"static","transitionIn":"cut","subjects":["P5"],"frame":"农家堂屋里，男人斜坐在方桌后面低头刷手机，窗台上摆着一只老式台灯和一台旧秤","onscreenText":"","audio":""},{"id":"S26","start":79.43,"end":83.23,"seconds":3.8,"motion":4.7,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"老太太贴着糊满旧报纸的木窗往外看，窗玻璃上结着厚霜","onscreenText":"","audio":"旁白：他刚刚用 AI 提示词生成了一个身价过亿的美女"},{"id":"S27","start":83.23,"end":90.7,"seconds":7.47,"motion":3.4,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P1","P5"],"frame":"老太太和男人凑在一部手机两侧，两张脸挤进同一个画面，手机屏幕的光打在下巴上","onscreenText":"","audio":"村里男人：啊，人工智能嘛"},{"id":"S28","start":90.7,"end":92.33,"seconds":1.63,"motion":5.1,"size":"medium-close","category":"dialogue","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"老太太把手机举到镜头前，屏幕正对观众，她的脸退到手机后面半明半暗","onscreenText":"","audio":"老太太：它靠啥活着呀"},{"id":"S29","start":92.33,"end":100.8,"seconds":8.47,"motion":1.4,"size":"medium-close","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P5"],"frame":"男人站在斑驳的土墙前抬头答话，棉袄领子立着，墙面的石灰大片脱落","onscreenText":"","audio":"村里男人：靠……靠算呗。他就给你画出来"},{"id":"S30","start":100.8,"end":105.3,"seconds":4.5,"motion":1.9,"size":"medium-close","category":"reaction","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"老太太侧对镜头盯着手边的手机，屏幕的冷光只照亮她鼻梁一侧","onscreenText":"","audio":"村里男人（画外）：他啥都能造"},{"id":"S31","start":105.3,"end":108.37,"seconds":3.07,"motion":9,"size":"extreme-close","category":"insert","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"手写拼音表上一根粗糙的手指压着字母，指甲缝里有泥，纸面起了毛边","onscreenText":"d a i","audio":""},{"id":"S32","start":108.37,"end":114.03,"seconds":5.66,"motion":0.5,"size":"wide","category":"establishing","camera":"static","transitionIn":"cut","subjects":["P1"],"frame":"土屋里一束光从破瓦缝打下来，老太太的身影缩在光柱边缘，屋里堆着柴草","onscreenText":"","audio":""},{"id":"S33","start":114.03,"end":116.73,"seconds":2.7,"motion":0.5,"size":"medium-close","category":"insert","camera":"static","transitionIn":"cut","subjects":["P1"],"frame":"老太太伏在一台泛黄的旧键盘上，手指悬在按键上方不敢落下","onscreenText":"","audio":""},{"id":"S34","start":116.73,"end":121.13,"seconds":4.4,"motion":14.4,"size":"wide","category":"subject","camera":"push-in","transitionIn":"cut","subjects":["P1"],"frame":"夜里的小卖部门口，老太太抱着纸箱迈进门槛，镜头跟着推进店内，炉火在右下角发红","onscreenText":"","audio":""},{"id":"S35","start":121.13,"end":127.37,"seconds":6.24,"motion":1.1,"size":"medium-close","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P1"],"frame":"货架前老太太越过前景的人肩说话，身后是堆到顶的杂货和纸箱","onscreenText":"","audio":"老太太：你跟我儿说……他就啥都不用怕了"},{"id":"S36","start":127.37,"end":130.07,"seconds":2.7,"motion":0.1,"size":"wide","category":"establishing","camera":"static","transitionIn":"cut","subjects":["P6"],"frame":"城里出租屋，双屏电脑亮着代码和游戏画面，儿子背对镜头缩在椅子里，桌上一排饮料罐","onscreenText":"","audio":""},{"id":"S37","start":130.07,"end":133.83,"seconds":3.76,"motion":0.9,"size":"wide","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P6"],"frame":"同一张电脑桌，儿子转身朝门口，屏幕蓝光把整间屋子染成青色","onscreenText":"","audio":"快递员（画外）：你的快递"},{"id":"S38","start":133.83,"end":135.1,"seconds":1.27,"motion":1.35,"size":"none","category":"transition","camera":"static","transitionIn":"fade-out","subjects":[],"frame":"整幅黑场，末尾隐约透出下一场屋内的一点暖光","onscreenText":"","audio":""},{"id":"S39","start":135.1,"end":142.17,"seconds":7.07,"motion":9.7,"size":"close","category":"insert","camera":"handheld","transitionIn":"fade-in","subjects":["P6"],"frame":"一双手把纸箱推到桌面中央拆开，从里面抽出一张折起来的手写纸条","onscreenText":"你一按","audio":""},{"id":"S40","start":142.17,"end":145.57,"seconds":3.4,"motion":1.3,"size":"close","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P6"],"frame":"儿子戴着反光的眼镜低头念纸条，嘴角先扬起来又压下去","onscreenText":"","audio":"老太太（画外）：它就自己生出来"},{"id":"S41","start":145.57,"end":148.07,"seconds":2.5,"motion":1.6,"size":"extreme-close","category":"insert","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"旧键盘上贴着一张手写的红箭头标签，一根手指按下箭头指着的那颗键","onscreenText":"","audio":""},{"id":"S42","start":148.07,"end":156.47,"seconds":8.4,"motion":0.6,"size":"close","category":"reaction","camera":"static","transitionIn":"cut","subjects":["P6"],"frame":"儿子的脸被屏幕照亮，眼镜片上映出跳动的界面，他慢慢笑了一下","onscreenText":"","audio":"老太太（画外）：那个叫 AI 的"},{"id":"S43","start":156.47,"end":172.53,"seconds":16.06,"motion":0.3,"size":"medium","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P1"],"frame":"破屋里老太太站在光柱中央，双手捧着手机贴近嘴边，尘埃在光里翻滚，头顶吊着一只灯泡","onscreenText":"AI","audio":"老太太：AI……你给我听好了"},{"id":"S44","start":172.53,"end":176.33,"seconds":3.8,"motion":0.5,"size":"close","category":"reaction","camera":"static","transitionIn":"cut","subjects":["P6"],"frame":"儿子的侧脸贴在屏幕前，镜片里叠着彩色的界面光，眼眶发红没有出声","onscreenText":"","audio":""},{"id":"S45","start":176.33,"end":180.63,"seconds":4.3,"motion":1.25,"size":"wide","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P6"],"frame":"拉开看整间出租屋，儿子缩在电脑椅里背对镜头，屏幕的光把他的影子投在墙上","onscreenText":"","audio":"老太太（画外）：能懂这字吗……要是它真那么灵"},{"id":"S46","start":180.63,"end":183.23,"seconds":2.6,"motion":12.3,"size":"close","category":"dialogue","camera":"static","transitionIn":"cut","subjects":["P6"],"frame":"儿子俯身贴向桌面，肩膀塌下去，脸埋进屏幕的光里","onscreenText":"","audio":"老太太（画外）：你让它把我给你生成过去"},{"id":"S47","start":183.23,"end":186.07,"seconds":2.84,"motion":3.1,"size":"close","category":"subject","camera":"handheld","transitionIn":"cut","subjects":["P6"],"frame":"儿子侧躺在床上抱着被子，屋里只剩一盏暖光小灯，画面大半是暗的","onscreenText":"","audio":"老太太（画外）：妈想去看看你"},{"id":"S48","start":186.07,"end":190.33,"seconds":4.26,"motion":0,"size":"none","category":"text-card","camera":"static","transitionIn":"fade-out","subjects":[],"frame":"黑场上淡入两行居中的白色宋体字，字号很小，四周留出大片黑","onscreenText":"最强悍的算力，也算不出最朴拙的牵挂","audio":""},{"id":"S49","start":190.33,"end":193.3,"seconds":2.97,"motion":0,"size":"none","category":"text-card","camera":"static","transitionIn":"cut","subjects":[],"frame":"黑场正中一行加大的白字，字距被拉开，句号单独占一格","onscreenText":"AI 读作爱。","audio":""},{"id":"S50","start":193.3,"end":195.87,"seconds":2.57,"motion":0,"size":"none","category":"text-card","camera":"static","transitionIn":"cut","subjects":[],"frame":"黑场正中一行祝福语，字号比上一张小一号，位置仍居中","onscreenText":"祝愿天下母亲身体健康","audio":""},{"id":"S51","start":195.87,"end":198,"seconds":2.13,"motion":0,"size":"none","category":"text-card","camera":"static","transitionIn":"cut","subjects":[],"frame":"黑场偏下一行制作说明，字号最小，灰白色","onscreenText":"全片生成 seedance2.5","audio":""},{"id":"S52","start":198,"end":199.73,"seconds":1.73,"motion":0,"size":"none","category":"text-card","camera":"static","transitionIn":"cut","subjects":[],"frame":"黑场偏下一行版权说明，与上一张同样的字号和位置","onscreenText":"MUSIC:青春纪念碑（杨洪清）侵权请联系我","audio":""},{"id":"S53","start":199.73,"end":202.9,"seconds":3.17,"motion":0,"size":"none","category":"text-card","camera":"static","transitionIn":"cut","subjects":[],"frame":"黑场正中是加粗的片名，下面一行小字署导演名","onscreenText":"啥是AI／导演 李幻枫","audio":""}]};
+const CFG={"frameDir":"frames","frames":{"S01":"ab","S02":"ab","S03":"ab","S04":"ab","S05":"ab","S06":"ab","S07":"ab","S08":"ab","S09":"ab","S10":"ab","S11":"ab","S12":"ab","S13":"ab","S14":"ab","S15":"ab","S16":"ab","S17":"ab","S18":"ab","S19":"ab","S20":"ab","S21":"ab","S22":"ab","S23":"ab","S24":"ab","S25":"ab","S26":"ab","S27":"ab","S28":"ab","S29":"ab","S30":"ab","S31":"ab","S32":"ab","S33":"ab","S34":"ab","S35":"ab","S36":"ab","S37":"ab","S38":"ab","S39":"ab","S40":"ab","S41":"ab","S42":"ab","S43":"ab","S44":"ab","S45":"ab","S46":"ab","S47":"ab","S48":"ab","S49":"ab","S50":"ab","S51":"ab","S52":"ab","S53":"ab"},"portraits":{"P1":"S31","P2":"S05","P3":"S18","P4":"S21","P5":"S29","P6":"S39"},"exportName":"demo-video-shots.json","labels":{"sizes":{"none":"无景别","extreme-wide":"大远景","wide":"全景","medium-wide":"中远景","medium":"中景","medium-close":"中近景","close":"特写","extreme-close":"大特写"},"cats":{"establishing":"定场","subject":"主体","dialogue":"对话","reaction":"反应","insert":"插入特写","pov":"主观","empty":"空镜","product":"产品展示","text-card":"字卡","transition":"转场镜头","archive":"引用素材"},"cams":{"static":"固定","push-in":"推","pull-out":"拉","zoom-in":"变焦推","zoom-out":"变焦拉","pan-left":"左摇","pan-right":"右摇","tilt-up":"上摇","tilt-down":"下摇","truck-left":"左移","truck-right":"右移","pedestal-up":"升","pedestal-down":"降","tracking":"跟拍","arc":"环绕","whip-pan":"甩镜","handheld":"手持微晃","shake":"剧烈晃动","rack-focus":"变焦点","micro-push":"微推","roll":"旋转","drone":"航拍移动"},"trans":{"cut":"硬切","dissolve":"叠化","fade-in":"淡入","fade-out":"淡出","whip":"甩切","match-cut":"匹配剪辑","wipe":"划像","morph":"特效转场"}},"colors":{"none":"#e4e8d9","extreme-wide":"#dae0c8","wide":"#c4cfaa","medium-wide":"#b0c091","medium":"#94aa74","medium-close":"#788f58","close":"#526f45","extreme-close":"#345136"},"filters":[["all","全部镜头"],["dialogue","对话"],["insert","插入特写"],["subject","主体"],["text-card","字卡"],["other","其他"]],"words":{"title":"拉片报告","shots":"镜头数","total":"总时长","avg":"平均镜长","median":"中位镜长","range":"最短 / 最长","rate":"每分钟切次","pace":"镜头节奏带","dist":"分布","table":"镜头表","gates":"质量门","size":"景别","category":"类别","camera":"运镜","frame":"画面","subjects":"主体","text":"画面文字","audio":"声音","motion":"实测运动","transition":"转场","note":"影片以 {size} 为主要景别，占总时长的 {sizePct}；{cat} 占 {catPct}。最长镜头为 {longest}，最短镜头为 {shortest}。","copy":"复制","copied":"已复制","export":"导出 JSON","sec":"秒","shotsUnit":"镜","missing":"未生成","pass":"通过","fail":"未通过","skip":"跳过","hints":"提示（不拦）","sound":"有声","mute":"无声","colon":"：","sep":"　","counts":"片数 · 占时","no":"镜号","keyframes":"关键帧","span":"时间","say":"文字 · 声音","motionShort":"实测","scrollHint":"窄屏自动拆成逐镜卡片，每格都带字段名","paceHint":"宽度表示时长 · 深浅表示景别 · 点击跳到该镜","indexLabel":"报告内容","pageShots":"镜头明细","pageAnalysis":"统计分布","pageCast":"出场人物","pageQuality":"质量检查","gatePassed":"项通过","gateFailed":"项未通过","gateSkipped":"项跳过","hintCount":"条提示","playerTitle":"原视频","choose":"选择本地视频","ready":"就绪","playing":"播放中","paused":"已暂停","ended":"播放结束","videoMissing":"原视频未加载，请选择本地视频","mismatch":"视频时长与报告不一致，请确认所选文件","playError":"视频无法播放，请选择浏览器支持的原视频","shot":"当前镜头","noShot":"此时间无镜头标注","help":"播放同步高亮镜头与时长 · 点击镜头跳转 · 点击关键帧放大","progress":"当前镜头播放进度","seek":"跳转镜头","searchHint":"搜索镜号、画面、台词…","viewSwitch":"视图切换","viewCards":"卡片视图","viewList":"列表视图","sortLabel":"镜头排序","sortTimeline":"按时间顺序","sortLongest":"镜头时长 · 由长到短","sortShortest":"镜头时长 · 由短到长","headFrames":"镜号 / 首尾关键帧","headTime":"时间 / 时长","headTags":"景别 / 运镜","noMatch":"没有找到匹配的镜头","clearFilter":"清除筛选","showing":"显示","unitShot":"镜","unitCut":"次","unitSecond":"秒","frameA":"首帧","frameB":"尾帧","filterAll":"全部镜头","filterOther":"其他","exported":"JSON 导出已开始","audioMark":"声","textMark":"字","distTitle":"景别、类别与运镜","distCaption":"占比按镜头时长计算","sizeTitle":"景别分布","sizeSub":"画面距离，塑造观看的关系","catTitle":"镜头类别","catSub":"叙事功能，组织故事的推进","camTitle":"运镜方式","camSub":"镜头运动，传递情绪的起伏","castTitle":"人物与镜头","castCaption":"{n} 位人物 · 点击查看相关分镜","castShots":"查看 {n} 个相关镜头","qualityOk":"{n} 项质量检查全部通过","qualityBad":"{n} 项质量检查未通过","qualityNote":"时间轴、关键帧与镜头标注全部由脚本确定性校验","hintTitle":"{n} 条待复核提示","close":"关闭大图","lightboxHint":"← → 切换首尾帧　·　ESC 关闭","noscript":"请启用 JavaScript 以浏览交互式报告。原始数据也可在同目录的 shots.json 和 shots.md 中查看。"}};
+/* video-shots 拉片报告的交互层。
+ *
+ * 数据只有两个入口，都由 render 内联在本文件之前：
+ *   DOC — shots.json 原样（报告里能看到的每个数字都从它算，不预先写死）
+ *   CFG — 词表、色阶、筛选项、人物头像取哪一镜、关键帧有没有、界面文案
+ *
+ * 所以这份文件是**通用的**：换一条片子、换一种语言，它不用改。
+ */
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const W = CFG.words;
+const { sizes, cats, cams } = CFG.labels;
+const colors = CFG.colors;
+const icon = (n) => `<svg class="icon" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const fmt = (t) => {
+  const v = Math.max(0, Math.round((Number(t) || 0) * 100));
+  return `${String(Math.floor(v / 6000)).padStart(2, '0')}:${String(Math.floor(v / 100) % 60).padStart(2, '0')}.${String(v % 100).padStart(2, '0')}`;
+};
+const castName = (id) => DOC.cast?.find((c) => c.id === id)?.name || id;
+/** 缺图就摆占位，不摆一个会 404 的 <img>——报告不装有。 */
+const fimg = (id, suffix, cls = '') => (CFG.frames[id] ?? '').includes(suffix)
+  ? `<img${cls ? ` class="${cls}"` : ''} src="${CFG.frameDir}/${id}${suffix}.jpg" alt="${id} ${suffix === 'a' ? W.frameA : W.frameB}" loading="lazy">`
+  : `<div class="frame-missing${cls ? ` ${cls}` : ''}">${id}${suffix}<br>${W.missing}</div>`;
+
+const SHOTS = DOC.shots ?? [];
+const N = SHOTS.length;
+const total = Number(DOC.meta?.durationSeconds) || SHOTS.reduce((a, s) => a + s.seconds, 0);
+const durations = SHOTS.map((s) => s.seconds).sort((a, b) => a - b);
+const median = N ? (N % 2 ? durations[(N - 1) / 2] : (durations[N / 2 - 1] + durations[N / 2]) / 2) : 0;
+const longest = SHOTS.reduce((a, s) => (!a || s.seconds > a.seconds ? s : a), null);
+const shortest = SHOTS.reduce((a, s) => (!a || s.seconds < a.seconds ? s : a), null);
+
+let playback = null;
+let selected = SHOTS[0];
+let galleryShot = SHOTS[0];
+let frame = 'a';
+let category = 'all';
+let castFilter = '';
+let layout = 'list';
+let toastTimer;
+
+/* 统计条 ---------------------------------------------------------------- */
+$('stats').innerHTML = [
+  [W.shots, N, W.unitShot],
+  [W.total, fmt(total), ''],
+  [W.avg, N ? (total / N).toFixed(2) : '0', 's'],
+  [W.median, median.toFixed(2), 's'],
+  [W.range, `${durations[0] ?? 0} / ${durations.at(-1) ?? 0}`, 's'],
+  [W.rate, total ? (N / total * 60).toFixed(1) : '0', W.unitCut],
+].map((v, i) => `<div class="stat ${i === 4 ? 'range' : ''}"><span class="stat-label">${esc(v[0])}</span><b>${esc(v[1])}<small>${esc(v[2])}</small></b></div>`).join('');
+
+/* 时间轴 ---------------------------------------------------------------- */
+$('timeline').innerHTML = SHOTS.map((s) => `<button class="segment" style="width:${s.seconds / total * 100}%;--color:${colors[s.size] || '#c4cfaa'}" data-player-segment="${s.id}" title="${esc(`${s.id} · ${fmt(s.start)} · ${s.seconds}s · ${sizes[s.size] || s.size}`)}" aria-label="${esc(`${W.seek} ${s.id}，${sizes[s.size] || s.size}，${s.seconds}${W.unitSecond}`)}"></button>`).join('');
+$('legend').innerHTML = Object.entries(sizes).filter(([k]) => SHOTS.some((s) => s.size === k))
+  .map(([k, v]) => `<span><i style="--color:${colors[k] || '#c4cfaa'}"></i>${esc(v)}</span>`).join('');
+
+/* 筛选 ------------------------------------------------------------------ */
+$('filters').innerHTML = CFG.filters.map(([k, v]) => `<button data-category="${k}" class="${k === 'all' ? 'active' : ''}" aria-pressed="${k === 'all'}">${esc(v)}</button>`).join('');
+const named = CFG.filters.map(([k]) => k).filter((k) => k !== 'all' && k !== 'other');
+
+function renderCards() {
+  const query = $('search').value.trim().toLowerCase();
+  let shots = SHOTS.filter((s) => (category === 'all' || s.category === category || (category === 'other' && !named.includes(s.category)))
+    && (!castFilter || (s.subjects ?? []).includes(castFilter))
+    && [s.id, s.frame, s.audio, s.onscreenText, sizes[s.size], cats[s.category], cams[s.camera], ...(s.subjects ?? []).map(castName)]
+      .join(' ').toLowerCase().includes(query));
+  if ($('sort').value !== 'timeline') shots = [...shots].sort((a, b) => ($('sort').value === 'longest' ? b.seconds - a.seconds : a.seconds - b.seconds));
+
+  $('cards').innerHTML = shots.map((s) => {
+    const who = (s.subjects ?? []).map((id) => esc(castName(id))).join(' / ') || '—';
+    const say = [
+      s.audio ? `<div class="audio-text"><span>${W.audioMark} · </span>${esc(s.audio)}</div>` : '',
+      s.onscreenText ? `<div class="audio-text"><span>${W.textMark} · </span>${esc(s.onscreenText)}</div>` : '',
+    ].join('') || '—';
+    return `<button class="shot-card" id="card-${s.id}" data-player-shot="${s.id}" aria-label="${esc(`${s.id} ${s.frame}`)}">`
+      + `<div class="card-image">${fimg(s.id, 'a')}${fimg(s.id, 'b', 'frame-b')}`
+      + `<span class="number">${s.id}</span><span class="seconds">${s.seconds.toFixed(2)}s</span></div>`
+      + `<div class="card-body"><div class="card-meta"><span class="mono">${fmt(s.start)}</span>`
+      + `<span class="tag size">${esc(sizes[s.size] || s.size)}</span></div>`
+      + `<p class="card-desc">${esc(s.frame)}</p>`
+      + `<div class="card-bottom"><span>${esc(cats[s.category] || s.category)}<span style="margin:0 5px">·</span>${esc(cams[s.camera] || s.camera)}</span><span>${who}</span></div></div>`
+      + `<div class="row-content"><div class="row-time">${fmt(s.start)}<br>${fmt(s.end)}<b>${s.seconds.toFixed(2)} s</b></div>`
+      + `<div class="row-tags"><span class="tag size">${esc(sizes[s.size] || s.size)}</span><span class="tag">${esc(cats[s.category] || s.category)}</span>`
+      + `<span class="tag cam">${esc(cams[s.camera] || s.camera)}</span><span class="row-subject">${who}</span></div>`
+      + `<div class="row-desc">${esc(s.frame)}</div><div class="row-audio">${say}</div></div></button>`;
+  }).join('');
+
+  playback?.refresh();
+  $('empty').hidden = shots.length > 0;
+  $('result-count').textContent = `${castFilter ? `${castName(castFilter)} · ` : ''}${W.showing} ${shots.length} / ${N} ${W.unitShot}`;
+}
+
+/* 关键帧大图 ------------------------------------------------------------- */
+function setFrame(value) {
+  frame = value;
+  const has = (CFG.frames[galleryShot.id] ?? '').includes(value);
+  $('lightbox-img').src = has ? `${CFG.frameDir}/${galleryShot.id}${value}.jpg` : '';
+  $('lightbox-img').alt = `${galleryShot.id} ${value === 'a' ? W.frameA : W.frameB}`;
+  $('lightbox-title').textContent = `${galleryShot.id} / FRAME ${value.toUpperCase()} · ${sizes[galleryShot.size] || galleryShot.size}`;
+}
+
+function selectShot(id) {
+  if (!SHOTS.some((s) => s.id === id)) return;
+  playback?.seek(id);
+  history.replaceState(null, '', `#${id}`);
+}
+
+function showPage(page) {
+  const section = $(page);
+  if (!section) return;
+  if (section.tagName === 'DETAILS') section.open = true;
+  section.scrollIntoView({ block: 'start', behavior: 'instant' });
+}
+document.querySelectorAll('[data-page]').forEach((b) => { b.onclick = () => showPage(b.dataset.page); });
+
+document.addEventListener('click', (e) => {
+  const image = e.target.closest('.shot-card img');
+  if (image) {
+    const id = image.closest('[data-player-shot]').dataset.playerShot;
+    galleryShot = SHOTS.find((s) => s.id === id);
+    setFrame(image.classList.contains('frame-b') ? 'b' : 'a');
+    $('lightbox').showModal();
+    return;
+  }
+  const filter = e.target.closest('[data-category]');
+  if (filter) {
+    category = filter.dataset.category;
+    castFilter = '';
+    document.querySelectorAll('[data-category]').forEach((b) => {
+      b.classList.toggle('active', b === filter);
+      b.setAttribute('aria-pressed', b === filter);
+    });
+    renderCards();
+  }
+  const f = e.target.closest('[data-frame]');
+  if (f) setFrame(f.dataset.frame);
+  // 质量门的提示里指名的镜头，点一下跳过去
+  const jump = e.target.closest('[data-shot]');
+  if (jump) { showPage('overview'); selectShot(jump.dataset.shot); }
+});
+
+$('search').oninput = renderCards;
+$('sort').onchange = renderCards;
+
+function resetFilters() {
+  category = 'all';
+  castFilter = '';
+  $('search').value = '';
+  $('sort').value = 'timeline';
+  document.querySelectorAll('[data-category]').forEach((b) => {
+    b.classList.toggle('active', b.dataset.category === 'all');
+    b.setAttribute('aria-pressed', b.dataset.category === 'all');
+  });
+  renderCards();
+}
+$('reset').onclick = resetFilters;
+
+['grid', 'list'].forEach((v) => {
+  $(`${v}-view`).onclick = () => {
+    layout = v;
+    $('list-head').hidden = v !== 'list';
+    $('cards').classList.toggle('list', v === 'list');
+    ['grid', 'list'].forEach((k) => {
+      $(`${k}-view`).classList.toggle('active', k === v);
+      $(`${k}-view`).setAttribute('aria-pressed', k === v);
+    });
+  };
+});
+
+function notify(message) {
+  clearTimeout(toastTimer);
+  $('toast').textContent = message;
+  $('toast').hidden = false;
+  toastTimer = setTimeout(() => { $('toast').hidden = true; }, 3200);
+}
+
+$('export').onclick = () => {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(DOC, null, 2)], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = CFG.exportName;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  notify(W.exported);
+};
+
+$('close-lightbox').onclick = () => $('lightbox').close();
+$('lightbox').addEventListener('click', (e) => { if (e.target === $('lightbox')) $('lightbox').close(); });
+
+document.addEventListener('keydown', (e) => {
+  if (['INPUT', 'SELECT', 'TEXTAREA', 'VIDEO'].includes(e.target.tagName) || e.target.closest('.report-player')) return;
+  if ($('lightbox').open) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); setFrame(frame === 'a' ? 'b' : 'a'); }
+    return;
+  }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    selectShot(SHOTS[SHOTS.indexOf(selected) + (e.key === 'ArrowLeft' ? -1 : 1)]?.id);
+  }
+});
+
+/* 分布 ------------------------------------------------------------------ */
+$('distributions').innerHTML = [
+  ['size', W.sizeTitle, W.sizeSub, sizes],
+  ['category', W.catTitle, W.catSub, cats],
+  ['camera', W.camTitle, W.camSub, cams],
+].map(([field, title, subtitle, labels]) => {
+  const values = Object.entries(labels).map(([k, label]) => {
+    const items = SHOTS.filter((s) => s[field] === k);
+    return { label, count: items.length, seconds: items.reduce((a, s) => a + s.seconds, 0) };
+  }).filter((v) => v.count).sort((a, b) => b.seconds - a.seconds);
+  return `<article class="analysis-card"><h3>${esc(title)}</h3><p>${esc(subtitle)}</p>`
+    + values.map((v) => `<div class="dist-row"><div class="dist-label"><span>${esc(v.label)}</span>`
+      + `<small>${v.count} ${W.unitShot} · ${(v.seconds / total * 100).toFixed(1)}%</small></div>`
+      + `<div class="bar-bg"><i style="width:${v.seconds / total * 100}%"></i></div></div>`).join('')
+    + '</article>';
+}).join('');
+
+/** 概述句同样是算出来的，不是写死的。 */
+const share = (field, key) => SHOTS.filter((s) => s[field] === key).reduce((a, s) => a + s.seconds, 0) / total * 100;
+// 注意：不能叫 top——window.top 是不可配置的全局，顶层 const top 会直接 SyntaxError
+const pickTop = (field) => [...new Set(SHOTS.map((s) => s[field]))].sort((a, b) => share(field, b) - share(field, a))[0];
+const topSize = pickTop('size');
+const topCat = pickTop('category');
+$('analysis-note').innerHTML = W.note
+  .replace('{size}', `<b>${esc(sizes[topSize] || topSize)}</b>`)
+  .replace('{sizePct}', `<b>${share('size', topSize).toFixed(1)}%</b>`)
+  .replace('{cat}', `<b>${esc(cats[topCat] || topCat)}</b>`)
+  .replace('{catPct}', `<b>${share('category', topCat).toFixed(1)}%</b>`)
+  .replace('{longest}', `<b>${longest.id} · ${longest.seconds} ${W.unitSecond}</b>`)
+  .replace('{shortest}', `<b>${shortest.id} · ${shortest.seconds} ${W.unitSecond}</b>`);
+
+/* 人物 ------------------------------------------------------------------ */
+if ($('cast-grid')) {
+  $('cast-grid').innerHTML = (DOC.cast ?? []).map((c) => {
+    const shot = CFG.portraits[c.id];
+    const n = SHOTS.filter((s) => (s.subjects ?? []).includes(c.id)).length;
+    return `<article class="cast-card">${shot ? fimg(shot, 'a') : `<div class="frame-missing" style="aspect-ratio:7/3">${W.missing}</div>`}`
+      + `<div><h3>${esc(c.name)} <span class="mono muted" style="font-size:10px;margin-left:7px">${esc(c.id)}</span></h3>`
+      + `<p>${esc(c.note ?? '')}</p>`
+      + `<button data-cast="${esc(c.id)}">${esc(W.castShots.replace('{n}', n))} ${icon('right')}</button></div></article>`;
+  }).join('');
+  document.querySelectorAll('[data-cast]').forEach((b) => {
+    b.onclick = () => {
+      resetFilters();
+      castFilter = b.dataset.cast;
+      renderCards();
+      showPage('overview');
+      $('library').scrollIntoView({ block: 'start', behavior: 'instant' });
+    };
+  });
+}
+
+renderCards();
+
+/* 播放器：时间轴、镜头行、当前镜头信息三处跟着视频走 ------------------------ */
+function shotAtTime(shots, time) {
+  if (!Number.isFinite(time) || !shots.length) return null;
+  let lo = 0;
+  let hi = shots.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (Number(shots[mid].start) <= time) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  if (hi < 0) return null;
+  const shot = shots[hi];
+  return time < Number(shot.end) || (hi === shots.length - 1 && time === Number(shot.end)) ? shot : null;
+}
+
+function createReportPlayer(shots, options = {}) {
+  const t = options.words;
+  const video = document.getElementById('report-video');
+  const el = (id) => document.getElementById(id);
+  const duration = Number(options.duration) || Number(shots.at(-1)?.end) || 0;
+  let activeId;
+  let activeShot = null;
+  let pendingTime = null;
+  let localUrl = null;
+  let frameHandle = null;
+  let rowNodes = [];
+  let segmentNodes = [];
+  let activeSegments = [];
+
+  function paint(time) {
+    const shot = shotAtTime(shots, time);
+    const changed = shot?.id !== activeId;
+    activeId = shot?.id;
+    activeShot = shot;
+    if (changed) {
+      el('player-shot').textContent = shot?.id || '—';
+      el('player-range').textContent = shot ? `${fmt(shot.start)} → ${fmt(shot.end)}` : t.noShot;
+      el('player-duration').textContent = shot ? `${Number(shot.seconds ?? (shot.end - shot.start)).toFixed(2)} s` : '—';
+      el('player-description').textContent = shot?.frame || '';
+      el('player-dialogue').textContent = [shot?.audio ? `${t.audio}: ${shot.audio}` : '', shot?.onscreenText ? `${t.text}: ${shot.onscreenText}` : ''].filter(Boolean).join(' / ');
+      options.onShotChange?.(shot);
+    }
+    // 播放过程中只改 class 和进度值，绝不重建行——重建会把滚动位置和焦点抖掉。
+    for (const row of rowNodes) {
+      const current = !!shot && row.dataset.playerShot === shot.id;
+      row.classList.toggle('is-current', current);
+      if (current) row.setAttribute('aria-current', 'true'); else row.removeAttribute('aria-current');
+    }
+    activeSegments = [];
+    for (const segment of segmentNodes) {
+      const current = !!shot && segment.dataset.playerSegment === shot.id;
+      segment.classList.toggle('is-current', current);
+      if (current) { segment.setAttribute('aria-current', 'true'); activeSegments.push(segment); }
+      else { segment.removeAttribute('aria-current'); segment.style.removeProperty('--played'); }
+    }
+    const fraction = shot ? Math.max(0, Math.min(1, (time - shot.start) / (shot.end - shot.start))) : 0;
+    for (const segment of activeSegments) segment.style.setProperty('--played', `${fraction * 100}%`);
+    el('player-progress').value = fraction;
+    el('player-clock').textContent = `${fmt(time)} / ${fmt(duration)}`;
+  }
+
+  function refresh() {
+    rowNodes = [...document.querySelectorAll('[data-player-shot]')];
+    segmentNodes = [...document.querySelectorAll('[data-player-segment]')];
+    paint(pendingTime ?? video.currentTime);
+  }
+  function update() { paint(pendingTime ?? video.currentTime); }
+  function stopFrames() {
+    if (frameHandle == null) return;
+    if (video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(frameHandle);
+    else cancelAnimationFrame(frameHandle);
+    frameHandle = null;
+  }
+  function scheduleFrame() {
+    stopFrames();
+    if (video.paused || video.ended) return;
+    if (video.requestVideoFrameCallback) {
+      frameHandle = video.requestVideoFrameCallback((now, metadata) => {
+        frameHandle = null;
+        paint(pendingTime ?? metadata.mediaTime);
+        scheduleFrame();
+      });
+    } else frameHandle = requestAnimationFrame(() => { frameHandle = null; update(); scheduleFrame(); });
+  }
+  function applyPending() {
+    if (pendingTime == null || video.readyState < 1 || !video.seekable.length) return;
+    video.currentTime = pendingTime;
+    pendingTime = null;
+  }
+  function seek(id) {
+    const shot = shots.find((s) => s.id === id);
+    if (!shot) return;
+    pendingTime = Number(shot.start);
+    history.replaceState(null, '', `#${encodeURIComponent(id)}`);
+    paint(pendingTime);
+    applyPending();
+  }
+  function status() {
+    el('player-state').textContent = video.ended ? t.ended : video.paused ? t.paused : t.playing;
+  }
+  function checkDuration() {
+    const mismatch = Number.isFinite(video.duration) && duration > 0 && Math.abs(video.duration - duration) > 0.5;
+    el('player-error').hidden = !mismatch;
+    el('player-error').textContent = mismatch ? t.mismatch : '';
+  }
+  function onClick(event) {
+    if (event.target.closest('img, [data-no-seek]')) return;
+    const target = event.target.closest('[data-player-shot], [data-player-segment]');
+    if (!target) return;
+    event.preventDefault();
+    seek(target.dataset.playerShot || target.dataset.playerSegment);
+  }
+  function onKey(event) {
+    if (!['Enter', ' '].includes(event.key) || !event.target.matches('[data-player-shot]')) return;
+    if (event.target.tagName === 'BUTTON') return; // 按钮自己会合成 click
+    event.preventDefault();
+    seek(event.target.dataset.playerShot);
+  }
+  document.addEventListener('click', onClick);
+  document.addEventListener('keydown', onKey);
+  video.addEventListener('timeupdate', update);
+  video.addEventListener('seeking', () => { stopFrames(); update(); });
+  video.addEventListener('seeked', () => { update(); scheduleFrame(); });
+  video.addEventListener('play', () => { applyPending(); status(); scheduleFrame(); });
+  video.addEventListener('pause', () => { stopFrames(); update(); status(); });
+  video.addEventListener('ended', () => { stopFrames(); update(); status(); });
+  for (const name of ['loadedmetadata', 'loadeddata', 'canplay', 'progress']) video.addEventListener(name, applyPending);
+  video.addEventListener('loadedmetadata', checkDuration);
+  video.addEventListener('error', () => {
+    stopFrames();
+    el('player-error').textContent = t.videoMissing;
+    el('player-error').hidden = false;
+    el('player-state').textContent = t.playError;
+  });
+  el('player-file').addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const resumeAt = pendingTime ?? video.currentTime;
+    video.pause();
+    if (localUrl) URL.revokeObjectURL(localUrl);
+    localUrl = URL.createObjectURL(file);
+    pendingTime = resumeAt;
+    el('player-error').hidden = true;
+    el('player-state').textContent = t.ready;
+    video.src = localUrl;
+    video.load();
+  });
+  window.addEventListener('pagehide', stopFrames);
+  window.addEventListener('pageshow', scheduleFrame);
+  if (!video.getAttribute('src')) { el('player-error').textContent = t.videoMissing; el('player-error').hidden = false; }
+  refresh();
+  return { seek, refresh, currentShot: () => activeShot };
+}
+
+playback = createReportPlayer(SHOTS, {
+  words: W,
+  duration: total,
+  onShotChange: (shot) => { if (shot) selected = shot; },
+});
+
+const initial = location.hash.slice(1);
+if (SHOTS.some((s) => s.id === initial)) selectShot(initial);
+window.addEventListener('hashchange', () => {
+  const id = location.hash.slice(1);
+  if (SHOTS.some((s) => s.id === id)) { showPage('overview'); selectShot(id); }
+});
+
+</script>
+</body>
+</html>

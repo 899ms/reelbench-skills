@@ -1,12 +1,9 @@
-# 渲染产物：每次 render 都能重新生成，不进版本控制
-demo-report/
+# 渲染产物默认不进版本控制（每次 render 都能重新生成）；
+# demo-report/ 是例外——它是仓库里唯一的「成品长什么样」的实物，特意留着
 *-report.html
 frames/
 sheets/
-
-# 样例原片：第三方短片，不随仓库分发
-demo-video.mp4
-*.mp4
+!demo-report/**
 
 .DS_Store
 node_modules/

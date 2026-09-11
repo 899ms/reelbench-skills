@@ -1,3 +1,6 @@
+[![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-285444?style=for-the-badge)](README.md)
+[![English](https://img.shields.io/badge/English-e2e6df?style=for-the-badge&labelColor=e2e6df&color=8b938a)](README.en.md)
+
 # video-shots
 
 给成片**拉片**：把一条视频拆成逐镜头的分析表——**时长、景别、类别、运镜、画面**。
@@ -128,6 +131,15 @@ node scripts/video-shots.mjs render shots.json --html --track track.json \
 | 质量门 | 14 道全绿，留着一条运动提示当范例 |
 
 它是质量基准，也是自测夹具。
+
+## 自己跑一遍
+
+仓库根目录的 `demo-report/` 就是这条样例的**完整产物**（报告 + 106 张关键帧 + 主数据），
+双击 `shots-report.html` 就能看。想从零复现：
+
+```bash
+node scripts/video-shots.mjs seed ../../demo-video.mp4 --threshold 0.15 --track track.json > shots.json
+```
 
 ## 来源
 
