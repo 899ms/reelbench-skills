@@ -1,0 +1,26 @@
+reelbench-skills
+Copyright 2026 eternityspring
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+---
+
+skill 的写法、「质量门全部由代码确定性检查 + 每道门都有击穿用例」的主张，
+学自同作者的 shuohao-skills（https://github.com/eternityspring/shuohao-skills，Apache-2.0）。
+方法论已内化为本仓库自己的 references 文档，未复制其代码。
+
+---
+
+examples/demo-shots.json 是对短片《啥是AI》（导演 李幻枫）的拉片标注数据，
+仅为演示本工具的产出格式。原片不随本仓库分发；README 里的报告截图含该片画面，
+版权归原作者所有。

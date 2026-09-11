@@ -1,0 +1,12 @@
+# 渲染产物：每次 render 都能重新生成，不进版本控制
+demo-report/
+*-report.html
+frames/
+sheets/
+
+# 样例原片：第三方短片，不随仓库分发
+demo-video.mp4
+*.mp4
+
+.DS_Store
+node_modules/
