@@ -26,29 +26,25 @@ demo-report/
 
 ## 安装
 
-skill 自包含，拷走整个目录就能用：
-
 ```bash
-# 项目级
-mkdir -p .claude/skills && cp -r skills/video-shots .claude/skills/
-
-# 或用户级
-mkdir -p ~/.claude/skills && cp -r skills/video-shots ~/.claude/skills/
+git clone https://github.com/eternityspring/reelbench-skills.git
+cd reelbench-skills
+./scripts/install.sh
 ```
 
-依赖只有 `node` >= 18 和 `ffmpeg` / `ffprobe`（`brew install ffmpeg`）。
+软链到 `~/.claude/skills/` 和/或 `~/.codex/skills/`（哪个装了就装到哪），**`git pull` 之后立刻生效**。
+
+```bash
+./scripts/install.sh --claude      # 只装到 Claude Code
+./scripts/install.sh --codex       # 只装到 codex
+./scripts/install.sh video-shots   # 只装某一个 skill
+./scripts/install.sh --uninstall   # 取消软链
+```
+
+依赖只有 `node` >= 18 和 `ffmpeg` / `ffprobe`（macOS：`brew install node ffmpeg`）。
 **零 npm 依赖、零 API key**，用当前会话额度。
 
-## 写法
-
-skill 的写法学自 [eternityspring/shuohao-skills](https://github.com/eternityspring/shuohao-skills)（Apache-2.0），
-三条规矩照搬：
-
-1. **能算的都算掉。** 模型只做模型该做的判断，其余交给确定性脚本。
-2. **checklist 交给模型自觉是靠不住的。** 每条规则都得是一道跑得起来的门，
-   而且每道门在自测里都有**击穿用例**——证明它真的会拦。
-3. **skill 必须自包含。** 不依赖任何第三方 skill；外部方法论学完内化成自己的 `references/`，
-   注明来源。
+不想软链就直接拷：`cp -r skills/video-shots ~/.claude/skills/`——skill 自包含，拷走就能用。
 
 ## 许可
 

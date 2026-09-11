@@ -27,31 +27,27 @@ demo-report/
 
 ## Install
 
-Each skill is self-contained — copy the directory and it works:
-
 ```bash
-# per project
-mkdir -p .claude/skills && cp -r skills/video-shots .claude/skills/
-
-# or per user
-mkdir -p ~/.claude/skills && cp -r skills/video-shots ~/.claude/skills/
+git clone https://github.com/eternityspring/reelbench-skills.git
+cd reelbench-skills
+./scripts/install.sh
 ```
 
-Requirements: `node` >= 18 and `ffmpeg` / `ffprobe` (`brew install ffmpeg`).
+This symlinks the skills into `~/.claude/skills/` and/or `~/.codex/skills/` (whichever exists),
+so **`git pull` takes effect immediately**.
+
+```bash
+./scripts/install.sh --claude      # Claude Code only
+./scripts/install.sh --codex       # codex only
+./scripts/install.sh video-shots   # one skill only
+./scripts/install.sh --uninstall   # remove the symlinks
+```
+
+Requirements: `node` >= 18 and `ffmpeg` / `ffprobe` (macOS: `brew install node ffmpeg`).
 **No npm dependencies, no API keys** — it runs on your current session.
 
-## How these skills are written
-
-The style is learned from [eternityspring/shuohao-skills](https://github.com/eternityspring/shuohao-skills)
-(Apache-2.0). Three rules carried over:
-
-1. **Compute everything that can be computed.** The model only makes the judgements
-   a model should make; the rest belongs to deterministic scripts.
-2. **A checklist the model polices itself against is worthless.** Every rule has to be
-   a gate that actually runs — and every gate has a **breaking test case** in the self-test,
-   proving it really blocks.
-3. **A skill must be self-contained.** No dependency on third-party skills; external
-   methodology is internalised into the skill's own `references/`, with the source credited.
+Prefer a copy over a symlink? `cp -r skills/video-shots ~/.claude/skills/` —
+each skill is self-contained.
 
 ## Licence
 
