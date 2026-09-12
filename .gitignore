@@ -8,5 +8,8 @@ sheets/
 !demo-sync/**
 panels/
 
+# 面板调参台：临时工具，随时能重新生成
+panel-lab.html
+
 .DS_Store
 node_modules/

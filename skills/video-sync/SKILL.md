@@ -7,8 +7,9 @@ description: |
   镜头表自动滚动并高亮当前这一镜。
   版式只看原片的宽高比：**横版 / 方版 → 画面在上、信息在下；竖版 → 画面在左、信息在右**，
   画面永远原样缩放，不裁不拉。
-  信息面板是一张 HTML 页面、一个镜头截一张图（高亮和滚动本来就只在切点上变，
-  逐帧渲染是白烧机器），**布局全在 scripts/panel.css 里，改它就能改版式**，不用碰脚本。
+  镜头表**随播放滚动**：切点处滚一小段把当前镜头带到锚点、随后停住，高亮条同步滑过去。
+  实现上只截三张图（底板 + 铺开的长图 ×2），滚动与高亮由 ffmpeg 按时间裁窗，
+  **布局全在 scripts/panel.css 里，改它就能改版式**，不用碰脚本。
   吃 video-shots 产出的 shots.json（有 frames/ 就把关键帧当缩略图用）。
   零 npm 依赖，用 ffmpeg 合成、无头浏览器渲面板。
   Use when asked to 导出视频、合成视频、分镜视频、带分镜信息的视频、解说版视频、
@@ -55,14 +56,18 @@ metadata:
 
 两个方向都保证**画面原样缩放、不裁不拉**，面板补足剩下的地方。
 
-**面板一个镜头截一张图，不是逐帧渲染。** 高亮和滚动本来就只在切点上变——53 个镜头
-就是 53 张 PNG，按镜头时长排进 concat 清单，时间对齐交给 ffmpeg 的时间戳，
-不靠 53 条 `enable=between(t,…)`（写错一条没人看得出来）。
+**只截三张图，动的部分交给 ffmpeg。** 面板上会变的只有两样：滚到哪、哪一行亮。
+所以量一次行位置、截一张底板、截两张把镜头表铺开的长图（一张压暗、一张全亮），
+滚动＝从暗底长图裁一个视窗，高亮＝从亮条长图裁一行盖上去，位置由 `sendcmd`
+在每个切点下发一条小表达式驱动。53 镜的片子截图从 53 次降到 3 次（12 秒）。
+
+**动在切点，静在镜头里**：切点处滚 `--ease`（默认 0.45）秒到位，随后停住——
+16 秒的长镜头里让列表一直爬，观众要盯着它晃 16 秒。
 
 `{baseDir}` = 本文件所在目录。脚本 `{baseDir}/scripts/video-sync.mjs`，零依赖，`node` 直接跑。
 
 **边界（不做的事）**：不做拉片（那是 `video-shots` 的活，本 skill 吃它的 shots.json）、
-不剪辑不转场不配乐、不烧字幕到画面上、不做逐帧动画（面板在切点上跳变，不做平滑滚动动画）。
+不剪辑不转场不配乐、不烧字幕到画面上、不做逐帧渲染（动效由 ffmpeg 按时间裁窗做出来）。
 
 ---
 
@@ -93,8 +98,9 @@ node {baseDir}/scripts/video-sync.mjs panels shots.json --video <片> \
   --frames frames --lang zh|en [--out panels] [--chrome <路径>]
 ```
 
-一个镜头一张 PNG（`panels/S01.png`…），外加一张 `panels/panel.html`——
-**用浏览器打开它就能预览面板**，`#S07` 换镜头看效果。
+产出 `static.png`（底板）、`list-dim.png` / `list-lit.png`（整张镜头表铺开的长图，
+一暗一亮）、`layout.json`（每行的位置，合成时按它算滚动），外加一张 `panels/panel.html`——
+**用浏览器打开它就能预览面板**，`#S07` 换镜头看效果（预览里的滚动动效和导出一致）。
 
 **改布局就改 `{baseDir}/scripts/panel.css`**，改完重跑 `panels` 就是新版面，
 不用碰脚本、不用重新想截图逻辑。样式约定见 `{baseDir}/references/panel-style.md`。
@@ -103,7 +109,7 @@ node {baseDir}/scripts/video-sync.mjs panels shots.json --video <片> \
 
 ```bash
 node {baseDir}/scripts/video-sync.mjs compose shots.json --video <片> \
-  [--panels panels] [-o out.mp4] [--crf 20]
+  [--panels panels] [-o out.mp4] [--crf 20] [--ease 0.45]
 ```
 
 音轨照搬原片（无声片自动不接音轨）。合成完 stderr 会报输出尺寸、时长、版式，**核对一眼**。
@@ -131,12 +137,13 @@ for t in 5 30 60; do ffmpeg -v error -y -ss $t -i out.mp4 -frames:v 1 -q:v 3 /tm
 
 ## 边界
 
-- **面板在切点上跳变，不做平滑滚动动画。** 要平滑就得逐帧渲染，成本涨几十倍，不值
+- **滚动只发生在切点**：滚 `--ease` 秒到位就停住，镜头里面板是静止的。
+  真要做「全程匀速爬」也行（改 `motionPlan` 的分段），但长镜头会一直晃眼睛
 - **需要一个无头浏览器**（Chrome / Chromium / Edge）。这是「布局能随便改」的代价：
   换成 ffmpeg 的 `drawtext` 画面板，中文换行、缩略图、高亮全得自己实现，改个版式要改滤镜图
 - 词表（景别 / 类别 / 运镜 / 转场）在本 skill 里**自带一份**，不跨目录 import——
   skill 要能整个拷走。`video-shots` 那边加了新词，这边也要加，不然显示成枚举键
-- 一个镜头一张截图，一张约 0.5–1 秒。百镜以上的片子渲面板要一两分钟，正常
+- 渲面板固定三张截图，和镜头数无关：53 镜约 12 秒。合成按片长走，203 秒的片子约 75 秒
 
 ## 自测
 
@@ -144,6 +151,7 @@ for t in 5 30 60; do ffmpeg -v error -y -ss $t -i out.mp4 -frames:v 1 -q:v 3 /tm
 node {baseDir}/scripts/selftest.mjs
 ```
 
-73 项断言，不碰 ffmpeg、不开浏览器：几何（横/方/竖、偶数边长、上下限、旋钮）、
-面板页面的数据契约（词表下发、缩略图有没有才给、转义）、concat 清单、ffmpeg 参数。
+106 项断言，不碰 ffmpeg、不开浏览器：几何（横/方/竖、偶数边长、上下限、旋钮）、
+面板页面的数据契约（词表下发、节奏角色、缩略图有没有才给、转义）、
+动画命令（每条都必须短——表达式长了 ffmpeg 直接配置失败）、ffmpeg 参数。
 改完脚本先跑这个。

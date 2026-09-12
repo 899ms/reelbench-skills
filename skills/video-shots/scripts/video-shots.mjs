@@ -34,6 +34,10 @@ export const DEFAULT_PARAMS = {
   motionGateMinSeconds: 1, // 短于它的镜头采样点太少，motion 门不查（值照给）
   minFrameChars: 12,       // 中文画面描述的最低字数
   minFrameWords: 8,        // 英文画面描述的最低词数（12 个字符只有两个单词，等于没设门）
+  minRhythmChars: 8,       // 中文节奏理由的最低字数
+  minRhythmWords: 5,       // 英文节奏理由的最低词数
+  hookWindowSeconds: 5,    // 开篇多少秒内该出现钩子（只提示不拦）
+  flatRun: 6,              // 连续多少镜同一个节奏角色算「节奏平」（只提示不拦）
   trackHz: 5,              // 运动曲线采样率（每秒几个点）
   frameDir: 'frames',      // 关键帧目录
 };
@@ -98,6 +102,24 @@ export const CAMERA_MOVES = {
   'micro-push': { zh: '微推', en: 'micro push', motion: 'subtle' },
   roll: { zh: '旋转', en: 'roll', motion: 'strong' },
   drone: { zh: '航拍移动', en: 'drone', motion: 'strong' },
+};
+
+/**
+ * 节奏角色（`rhythm`）：这一镜在**观众的注意力曲线**上干什么活。
+ *
+ * 景别/类别/运镜回答「怎么拍的」，节奏回答「为什么观众还没划走」。
+ * 词表按短视频真正留人的那几件事拆——每个值都对应一种可观察的观众反应，
+ * 不是情绪形容词。判不准就留空（整片留空是允许的，半张表不行，门查）。
+ */
+export const RHYTHM_ROLES = {
+  hook: { zh: '钩子', en: 'hook', color: '#d8e07a' },
+  setup: { zh: '铺垫', en: 'setup', color: '#9fb488' },
+  build: { zh: '递进', en: 'build', color: '#8fb0a0' },
+  beat: { zh: '重音', en: 'beat', color: '#c9a15e' },
+  turn: { zh: '转折', en: 'turn', color: '#d98060' },
+  payoff: { zh: '兑现', en: 'payoff', color: '#c56a4e' },
+  breath: { zh: '换气', en: 'breath', color: '#7f8f9c' },
+  close: { zh: '收口', en: 'close', color: '#8a7fa0' },
 };
 
 /** 入点转场方式。省略 = cut（硬切）。 */
@@ -395,6 +417,7 @@ export function stats(doc) {
     sizes: tally('size', SHOT_SIZES),
     categories: tally('category', SHOT_CATEGORIES),
     cameras: tally('camera', CAMERA_MOVES),
+    rhythms: (doc?.shots ?? []).some((x) => x.rhythm) ? tally('rhythm', RHYTHM_ROLES) : [],
   };
 }
 
@@ -412,7 +435,7 @@ const GATE_LABELS = {
     size: '景别枚举', category: '类别枚举', camera: '运镜枚举', transition: '转场枚举',
     'frame-text': '画面描述可核对', dedup: '画面描述不重复', subjects: '主体对账',
     'category-evidence': '类别要有证据', motion: '运镜实测对账',
-    boundary: '边界来自检测', frames: '关键帧齐全',
+    boundary: '边界来自检测', frames: '关键帧齐全', rhythm: '节奏分析可核对',
   },
   en: {
     timeline: 'Timeline is continuous', duration: 'Durations add up', numbering: 'Shot numbering',
@@ -421,6 +444,7 @@ const GATE_LABELS = {
     dedup: 'No duplicate descriptions', subjects: 'Subjects reconcile with cast',
     'category-evidence': 'Categories carry evidence', motion: 'Camera vs. measured motion',
     boundary: 'Boundaries come from detection', frames: 'Keyframes present',
+    rhythm: 'Rhythm annotation is checkable',
   },
 };
 
@@ -532,6 +556,38 @@ const MSG = {
   frameMissing: {
     zh: (id) => `${id}：缺关键帧 ${id}a.jpg`,
     en: (id) => `${id}: keyframe ${id}a.jpg is missing`,
+  },
+  rhythmBadRole: {
+    zh: (id, value, keys) => `${id}：节奏角色 ${value} 不在词表里（可选：${keys}）`,
+    en: (id, value, keys) => `${id}: rhythm role ${value} is not in the vocabulary (choose from: ${keys})`,
+  },
+  rhythmHalfDone: {
+    zh: (done, all) => `只标了 ${done}/${all} 镜的节奏——要么整片都标，要么一镜都不标，半张表汇总不出东西`,
+    en: (done, all) => `rhythm is annotated on only ${done}/${all} shots — annotate the whole film or none of it; half a table aggregates to nothing`,
+  },
+  rhythmNoteEmpty: {
+    zh: (id, role) => `${id}：标了「${role}」却没写为什么（rhythmNote 空）`,
+    en: (id, role) => `${id}: tagged "${role}" with no reason given (rhythmNote is empty)`,
+  },
+  rhythmNoteShort: {
+    zh: (id, got, min) => `${id}：节奏理由只有 ${got} 字（至少 ${min}）`,
+    en: (id, got, min) => `${id}: the rhythm reason is only ${got} words (at least ${min})`,
+  },
+  rhythmNoteVague: {
+    zh: (id, words) => `${id}：节奏理由里有空话「${words}」——写观众在这一刻看到什么、为什么不划走`,
+    en: (id, words) => `${id}: the rhythm reason leans on "${words}" — say what the viewer sees here and why they stay`,
+  },
+  hintNoHook: {
+    zh: (sec) => `开篇 ${sec} 秒内没有任何「钩子」——短视频的去留就在这几秒，回头看看第一镜到底给了什么`,
+    en: (sec) => `no "hook" in the first ${sec}s — that window decides whether a short video keeps the viewer; look at the opening shots again`,
+  },
+  hintPayoffNoSetup: {
+    zh: (id) => `${id}：标了「兑现」，但它前面没有任何「铺垫」或「递进」——兑现的是什么？`,
+    en: (id) => `${id}: tagged "payoff" but nothing before it is "setup" or "build" — what is being paid off?`,
+  },
+  hintFlat: {
+    zh: (from, to, role, n) => `${from}–${to} 连着 ${n} 镜都是「${role}」——节奏在这一段是平的，观众最容易在这里走`,
+    en: (from, to, role, n) => `${from}–${to}: ${n} shots in a row are all "${role}" — the rhythm flattens here, and that is where viewers leave`,
   },
   skipNoCast: { zh: () => '没有声明 cast，跳过（视为通过）', en: () => 'no cast declared — skipped (counts as passed)' },
   skipNoTrack: { zh: () => '没有给 --track，跳过（视为通过）', en: () => 'no --track given — skipped (counts as passed)' },
@@ -806,6 +862,65 @@ export function validate(doc, ctx = {}) {
     }
   }
 
+  /*
+   * 15. 节奏分析可核对。字段是**可选**的——整片不标也行；但**标了就得标全**，
+   *     半张表汇总不出任何东西。标了的镜头必须写清为什么（和画面描述同一条规矩：
+   *     写观众看到什么，不写「很有节奏感」）。
+   */
+  {
+    const bad = [];
+    const tagged = shots.filter((s) => String(s.rhythm ?? '').trim());
+    if (tagged.length && tagged.length < shots.length) bad.push(M('rhythmHalfDone', tagged.length, shots.length));
+    for (const s of shots) {
+      const role = String(s.rhythm ?? '').trim();
+      if (!role) continue;
+      if (!RHYTHM_ROLES[role]) {
+        bad.push(M('rhythmBadRole', s.id, role, Object.keys(RHYTHM_ROLES).join(' / ')));
+        continue;
+      }
+      const note = String(s.rhythmNote ?? '').trim();
+      if (!note) { bad.push(M('rhythmNoteEmpty', s.id, labelOf(RHYTHM_ROLES, role, lang))); continue; }
+      const cjk = CJK.test(note);
+      if (cjk) {
+        const chars = note.replace(/\s+/g, '').length;
+        if (chars < p.minRhythmChars) bad.push(M('rhythmNoteShort', s.id, `${chars} 字`, `${p.minRhythmChars} 字`));
+      } else {
+        const words = note.split(/\s+/).filter(Boolean).length;
+        if (words < p.minRhythmWords) bad.push(M('rhythmNoteShort', s.id, words, p.minRhythmWords));
+      }
+      const lower = note.toLowerCase();
+      const hitAll = (cjk ? VAGUE_WORDS : VAGUE_WORDS_EN).filter((w) => lower.includes(w.toLowerCase()));
+      const vague = hitAll.filter((w) => !hitAll.some((o) => o !== w && o.toLowerCase().includes(w.toLowerCase())));
+      if (vague.length) bad.push(M('rhythmNoteVague', s.id, vague.join(cjk ? '」「' : '", "')));
+    }
+    gates.push(gate('rhythm', lang, bad));
+
+    /*
+     * 节奏的三条提示都**不拦**：它们是导演判断，不是对错。
+     * 但它们指的是短视频最常掉人的三个地方，值得回头看一眼。
+     */
+    if (tagged.length === shots.length && shots.length) {
+      const roleOf = (s) => String(s.rhythm ?? '').trim();
+      const early = shots.filter((s) => Number(s.start) < p.hookWindowSeconds);
+      if (early.length && !early.some((s) => roleOf(s) === 'hook')) hints.push(M('hintNoHook', p.hookWindowSeconds));
+
+      const firstPayoff = shots.findIndex((s) => roleOf(s) === 'payoff');
+      if (firstPayoff > -1 && !shots.slice(0, firstPayoff).some((s) => ['setup', 'build'].includes(roleOf(s)))) {
+        hints.push(M('hintPayoffNoSetup', shots[firstPayoff].id));
+      }
+
+      let run = 1;
+      for (let i = 1; i <= shots.length; i += 1) {
+        if (i < shots.length && roleOf(shots[i]) === roleOf(shots[i - 1])) { run += 1; continue; }
+        if (run >= p.flatRun) {
+          hints.push(M('hintFlat', shots[i - run].id, shots[i - 1].id,
+            labelOf(RHYTHM_ROLES, roleOf(shots[i - 1]), lang), run));
+        }
+        run = 1;
+      }
+    }
+  }
+
   const failed = gates.filter((g) => !g.ok);
   return { gates, hints, ok: failed.length === 0, failed };
 }
@@ -824,6 +939,7 @@ const I18N = {
     sec: '秒', shotsUnit: '镜', missing: '未生成', pass: '通过', fail: '未通过', skip: '跳过',
     hints: '提示（不拦）', sound: '有声', mute: '无声', colon: '：', sep: '　', counts: '片数 · 占时',
     no: '镜号', keyframes: '关键帧', span: '时间', say: '文字 · 声音', motionShort: '实测',
+    rhythm: '节奏', rhythmTitle: '节奏角色', rhythmSub: '观众为什么还没划走',
     scrollHint: '窄屏自动拆成逐镜卡片，每格都带字段名',
     paceHint: '宽度表示时长 · 深浅表示景别 · 点击跳到该镜',
     // 报告界面（shell + report.js 共用同一张表）
@@ -863,6 +979,7 @@ const I18N = {
     sec: 's', shotsUnit: '', missing: 'not generated', pass: 'pass', fail: 'fail', skip: 'skipped',
     hints: 'Hints (not blocking)', sound: 'with audio', mute: 'silent', colon: ': ', sep: '   ', counts: 'shots · share',
     no: 'No.', keyframes: 'Keyframes', span: 'Time', say: 'Text · Audio', motionShort: 'measured',
+    rhythm: 'Rhythm', rhythmTitle: 'Rhythm role', rhythmSub: 'why the viewer has not swiped away',
     scrollHint: 'stacks into labelled cards on narrow screens',
     paceHint: 'width = duration · shade = shot size · click to jump',
     indexLabel: 'Contents', pageShots: 'Shots', pageAnalysis: 'Distribution', pageCast: 'Cast', pageQuality: 'Quality',
@@ -915,16 +1032,19 @@ export function renderMd(doc, ctx = {}) {
   const paren = (x) => (lang === 'en' ? ` (${x})` : `（${x}）`);
   if (doc.meta) out.push(`- ${doc.meta.width}×${doc.meta.height}${paren(doc.meta.aspect)} · ${doc.meta.fps} fps · ${doc.meta.hasAudio ? t.sound : t.mute}`);
   out.push('');
-  const TABLE_OF = { [t.size]: SHOT_SIZES, [t.category]: SHOT_CATEGORIES, [t.camera]: CAMERA_MOVES };
-  for (const [label, rows] of [[t.size, st.sizes], [t.category, st.categories], [t.camera, st.cameras]]) {
+  const TABLE_OF = {
+    [t.size]: SHOT_SIZES, [t.category]: SHOT_CATEGORIES, [t.camera]: CAMERA_MOVES, [t.rhythm]: RHYTHM_ROLES,
+  };
+  for (const [label, rows] of [[t.size, st.sizes], [t.category, st.categories], [t.camera, st.cameras],
+    ...(st.rhythms.length ? [[t.rhythm, st.rhythms]] : [])]) {
     out.push(`**${label}**${paren(t.counts)}${t.colon}${rows.map((r) => `${labelOf(TABLE_OF[label] ?? {}, r.key, lang)} ${r.count}${t.shotsUnit} · ${st.totalSeconds ? Math.round((r.seconds / st.totalSeconds) * 100) : 0}%`).join(t.sep)}`);
   }
   out.push('', `## ${t.table}`, '');
-  out.push(`| # | ${t.span} | ${t.sec} | ${t.size} | ${t.category} | ${t.camera} | ${t.frame} | ${t.subjects} | ${t.text} | ${t.audio} |`);
-  out.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  out.push(`| # | ${t.span} | ${t.sec} | ${t.size} | ${t.category} | ${t.camera} | ${t.frame} | ${t.rhythm} | ${t.subjects} | ${t.text} | ${t.audio} |`);
+  out.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const s of doc.shots ?? []) {
     const cell = (x) => String(x ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
-    out.push(`| ${s.id} | ${fmtTime(s.start)}—${fmtTime(s.end)} | ${s.seconds} | ${labelOf(SHOT_SIZES, s.size, lang)} | ${labelOf(SHOT_CATEGORIES, s.category, lang)} | ${labelOf(CAMERA_MOVES, s.camera, lang)} | ${cell(s.frame)} | ${cell((s.subjects ?? []).join('、'))} | ${cell(s.onscreenText)} | ${cell(s.audio)} |`);
+    out.push(`| ${s.id} | ${fmtTime(s.start)}—${fmtTime(s.end)} | ${s.seconds} | ${labelOf(SHOT_SIZES, s.size, lang)} | ${labelOf(SHOT_CATEGORIES, s.category, lang)} | ${labelOf(CAMERA_MOVES, s.camera, lang)} | ${cell(s.frame)} | ${cell(s.rhythm ? `${labelOf(RHYTHM_ROLES, s.rhythm, lang)}：${s.rhythmNote ?? ''}` : '')} | ${cell((s.subjects ?? []).join('、'))} | ${cell(s.onscreenText)} | ${cell(s.audio)} |`);
   }
   out.push('', `## ${t.gates}`, '');
   for (const g of v.gates) {
@@ -1032,7 +1152,10 @@ export function renderHtml(doc, ctx = {}) {
       cats: Object.fromEntries(Object.entries(SHOT_CATEGORIES).map(([k, x]) => [k, lang === 'en' ? x.en : x.zh])),
       cams: Object.fromEntries(Object.entries(CAMERA_MOVES).map(([k, x]) => [k, lang === 'en' ? x.en : x.zh])),
       trans: Object.fromEntries(Object.entries(TRANSITIONS).map(([k, x]) => [k, lang === 'en' ? x.en : x.zh])),
+      rhythms: Object.fromEntries(Object.entries(RHYTHM_ROLES).map(([k, x]) => [k, lang === 'en' ? x.en : x.zh])),
     },
+    rhythmColors: Object.fromEntries(Object.entries(RHYTHM_ROLES).map(([k, x]) => [k, x.color])),
+    hasRhythm: (doc.shots ?? []).some((x) => x.rhythm),
     colors: Object.fromEntries(Object.entries(SHOT_SIZES).map(([k, x]) => [k, x.color])),
     filters: filterList(doc, lang, t),
     words: t,
@@ -1104,6 +1227,7 @@ ${readAsset('report.css')}
       <div class="player-range"><span id="player-range">—</span><b id="player-duration">—</b></div>
       <progress id="player-progress" value="0" max="1" aria-label="${esc(t.progress)}"></progress>
       <p id="player-description"></p>
+      <p id="player-beat"></p>
       <p id="player-dialogue"></p>
       <div class="player-help">${esc(t.help)}</div>
       <p id="player-error" role="status" hidden></p>

@@ -46,6 +46,8 @@
 | `frame` | string | **画面描述**，12 字起，写看得见的东西。空话词表和废话开头都会被拦 |
 | `onscreenText` | string | 画面上不是台词的文字：片名、字卡、界面文字。可空 |
 | `audio` | string | 台词、旁白、关键音效。**烧录的对白字幕算台词写这里** |
+| `rhythm` | enum | **节奏角色**：这一镜为什么留得住人（`hook` / `setup` / `build` / `beat` / `turn` / `payoff` / `breath` / `close`）。**可选，但标了就得整片标全** |
+| `rhythmNote` | string | 节奏理由，一句话。写观众这一刻看到什么、为什么不划走。标了 `rhythm` 就必须写 |
 | `note` | string | 备注，可选。短于 `minShotSeconds` 的镜头**必须**写（说明是闪切还是检测碎片） |
 
 ## params
@@ -64,6 +66,10 @@
 | `motionGateMinSeconds` | 1 | 短于它的镜头不查运镜（采样点太少，一个尖峰就能翻案） |
 | `minFrameChars` | 12 | **中文**画面描述的最低字数 |
 | `minFrameWords` | 8 | **英文**画面描述的最低词数。按描述本身的语言选用哪一条 |
+| `minRhythmChars` | 8 | 中文节奏理由的最低字数 |
+| `minRhythmWords` | 5 | 英文节奏理由的最低词数 |
+| `hookWindowSeconds` | 5 | 开篇多少秒内该出现钩子（**只提示不拦**） |
+| `flatRun` | 6 | 连续多少镜同一个节奏角色算「节奏平」（**只提示不拦**） |
 | `trackHz` | 5 | 运动曲线采样率 |
 | `frameDir` | `frames` | 关键帧目录 |
 

@@ -609,6 +609,15 @@ h1 small{font-size:14px}
 .quality-banner.bad .quality-check{border-color:#dcb5a5;color:#a6563a}
 .hint p{margin:7px 0 0}
 
+/* 节奏角色：卡片与列表里的一枚小标 + 一句理由 */
+.beat{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:1px 7px;border-radius:4px;
+  background:#f1f3ed;color:#5d6a4f;white-space:nowrap}
+.beat i{width:6px;height:6px;border-radius:50%}
+.beat-note{font-size:10px;color:#8b9585;line-height:1.6}
+.row-beat{margin-top:5px}
+.card-beat{padding:0 12px 10px;margin-top:-4px}
+#player-beat{margin:6px 0 0;font-size:11px;color:#6f7d62}
+
 </style>
 </head>
 <body>
@@ -633,7 +642,7 @@ h1 small{font-size:14px}
     </div>
   </div>
   <div class="report-actions">
-    <span class="report-status">14 passed</span>
+    <span class="report-status">15 passed</span>
     <button class="export" id="export"><svg class="icon"><use href="#i-download"/></svg>Export JSON</button>
   </div>
 </header>
@@ -643,7 +652,7 @@ h1 small{font-size:14px}
   <button data-page="overview">Shots <span>5</span></button>
   <button data-page="analysis">Distribution</button>
   <button data-page="cast">Cast <span>2</span></button>
-  <button data-page="quality">Quality <span>14</span></button>
+  <button data-page="quality">Quality <span>15</span></button>
 </nav>
 
 <div class="stats" id="stats"></div>
@@ -663,6 +672,7 @@ h1 small{font-size:14px}
       <div class="player-range"><span id="player-range">—</span><b id="player-duration">—</b></div>
       <progress id="player-progress" value="0" max="1" aria-label="Progress within the current shot"></progress>
       <p id="player-description"></p>
+      <p id="player-beat"></p>
       <p id="player-dialogue"></p>
       <div class="player-help">Playback highlights the current shot · click a shot to jump · click a frame to enlarge</div>
       <p id="player-error" role="status" hidden></p>
@@ -734,18 +744,18 @@ h1 small{font-size:14px}
     <div class="quality-banner">
       <div class="quality-check">✓</div>
       <div>
-        <h3>All 14 quality gates passed</h3>
+        <h3>All 15 quality gates passed</h3>
         <p>Timeline, keyframes and annotations are all checked deterministically by the script</p>
       </div>
     </div>
-    <ul class="gates"><li class="ok"><b>Timeline is continuous</b><span class="tag">pass</span></li><li class="ok"><b>Durations add up</b><span class="tag">pass</span></li><li class="ok"><b>Shot numbering</b><span class="tag">pass</span></li><li class="ok"><b>Shot size vocabulary</b><span class="tag">pass</span></li><li class="ok"><b>Category vocabulary</b><span class="tag">pass</span></li><li class="ok"><b>Camera vocabulary</b><span class="tag">pass</span></li><li class="ok"><b>Transition vocabulary</b><span class="tag">pass</span></li><li class="ok"><b>Frame description is checkable</b><span class="tag">pass</span></li><li class="ok"><b>No duplicate descriptions</b><span class="tag">pass</span></li><li class="ok"><b>Subjects reconcile with cast</b><span class="tag">pass</span></li><li class="ok"><b>Categories carry evidence</b><span class="tag">pass</span></li><li class="ok"><b>Camera vs. measured motion</b><span class="tag">pass</span></li><li class="ok"><b>Boundaries come from detection</b><span class="tag">pass</span></li><li class="ok"><b>Keyframes present</b><span class="tag">pass</span></li></ul>
+    <ul class="gates"><li class="ok"><b>Timeline is continuous</b><span class="tag">pass</span></li><li class="ok"><b>Durations add up</b><span class="tag">pass</span></li><li class="ok"><b>Shot numbering</b><span class="tag">pass</span></li><li class="ok"><b>Shot size vocabulary</b><span class="tag">pass</span></li><li class="ok"><b>Category vocabulary</b><span class="tag">pass</span></li><li class="ok"><b>Camera vocabulary</b><span class="tag">pass</span></li><li class="ok"><b>Transition vocabulary</b><span class="tag">pass</span></li><li class="ok"><b>Frame description is checkable</b><span class="tag">pass</span></li><li class="ok"><b>No duplicate descriptions</b><span class="tag">pass</span></li><li class="ok"><b>Subjects reconcile with cast</b><span class="tag">pass</span></li><li class="ok"><b>Categories carry evidence</b><span class="tag">pass</span></li><li class="ok"><b>Camera vs. measured motion</b><span class="tag">pass</span></li><li class="ok"><b>Boundaries come from detection</b><span class="tag">pass</span></li><li class="ok"><b>Keyframes present</b><span class="tag">pass</span></li><li class="ok"><b>Rhythm annotation is checkable</b><span class="tag">pass</span></li></ul>
     
   </div>
 </details>
 
 <footer class="footer">
   <span>video-shots · Shot Breakdown</span>
-  <span>5 shots · 10 Keyframes · 2026-09-11</span>
+  <span>5 shots · 10 Keyframes · 2026-09-12</span>
 </footer>
 </main>
 </div>
@@ -758,8 +768,8 @@ h1 small{font-size:14px}
 <div id="toast" role="status" hidden></div>
 <noscript>Enable JavaScript for the interactive report. The raw data is in shots.json and shots.md next to this file.</noscript>
 <script>
-const DOC={"source":"demo-en.mp4","title":"","lang":"en","meta":{"durationSeconds":30.14,"fps":24,"width":1280,"height":720,"aspect":"16:9","codec":"h264","hasAudio":true},"params":{"sceneThreshold":0.3,"minShotSeconds":0.3},"seedCuts":[4.63,14.79,20.08,25],"manualCuts":[],"cast":[{"id":"P1","name":"The shopper","note":"Young woman in a pink tee, olive shoulder bag"},{"id":"P2","name":"Shop assistant","note":"Only the hand and forearm reach into frame"}],"shots":[{"id":"S01","start":0,"end":4.63,"seconds":4.63,"motion":11.95,"size":"medium-wide","category":"establishing","camera":"tracking","transitionIn":"cut","subjects":["P1"],"frame":"A young woman in a pink tee pulls open a metal shutter door, the sunlit alley and parked cars behind her","onscreenText":"","audio":""},{"id":"S02","start":4.63,"end":14.79,"seconds":10.16,"motion":18.5,"size":"medium-wide","category":"subject","camera":"tracking","transitionIn":"cut","subjects":["P1"],"frame":"The camera follows her from behind along the pavement, past a lit bakery window stacked with bread and pedestrians crossing the frame","onscreenText":"","audio":""},{"id":"S03","start":14.79,"end":20.08,"seconds":5.29,"motion":4.5,"size":"close","category":"product","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"Both hands cradle the phone at chest height, the camera app open on screen and her thumb resting beside the shutter button","onscreenText":"","audio":""},{"id":"S04","start":20.08,"end":25,"seconds":4.92,"motion":4.7,"size":"medium-close","category":"subject","camera":"handheld","transitionIn":"cut","subjects":["P1","P2"],"frame":"Across the glass counter the assistant's hand slides a boxed phone toward her, price cards and display units lined up beside it","onscreenText":"iPhone","audio":""},{"id":"S05","start":25,"end":30.14,"seconds":5.14,"motion":22.3,"size":"medium-wide","category":"subject","camera":"tracking","transitionIn":"cut","subjects":["P1"],"frame":"She steps out of the shop doorway holding the box against her bag and walks off down the sloping street, traffic light ahead","onscreenText":"","audio":""}]};
-const CFG={"frameDir":"frames","frames":{"S01":"ab","S02":"ab","S03":"ab","S04":"ab","S05":"ab"},"portraits":{"P1":"S03","P2":"S04"},"exportName":"demo-en-shots.json","labels":{"sizes":{"none":"n/a","extreme-wide":"extreme wide","wide":"wide","medium-wide":"medium wide","medium":"medium","medium-close":"medium close","close":"close-up","extreme-close":"extreme close-up"},"cats":{"establishing":"establishing","subject":"subject","dialogue":"dialogue","reaction":"reaction","insert":"insert","pov":"POV","empty":"empty","product":"product","text-card":"text card","transition":"transition","archive":"archive"},"cams":{"static":"static","push-in":"push in","pull-out":"pull out","zoom-in":"zoom in","zoom-out":"zoom out","pan-left":"pan left","pan-right":"pan right","tilt-up":"tilt up","tilt-down":"tilt down","truck-left":"truck left","truck-right":"truck right","pedestal-up":"pedestal up","pedestal-down":"pedestal down","tracking":"tracking","arc":"arc","whip-pan":"whip pan","handheld":"handheld","shake":"shake","rack-focus":"rack focus","micro-push":"micro push","roll":"roll","drone":"drone"},"trans":{"cut":"cut","dissolve":"dissolve","fade-in":"fade in","fade-out":"fade out","whip":"whip","match-cut":"match cut","wipe":"wipe","morph":"morph"}},"colors":{"none":"#e4e8d9","extreme-wide":"#dae0c8","wide":"#c4cfaa","medium-wide":"#b0c091","medium":"#94aa74","medium-close":"#788f58","close":"#526f45","extreme-close":"#345136"},"filters":[["all","All shots"],["subject","subject"],["establishing","establishing"],["product","product"]],"words":{"title":"Shot Breakdown","shots":"Shots","total":"Duration","avg":"Avg shot","median":"Median shot","range":"Min / Max","rate":"Cuts per min","pace":"Pace strip","dist":"Distribution","table":"Shot list","gates":"Quality gates","size":"Size","category":"Category","camera":"Camera","frame":"Frame","subjects":"Subjects","text":"On-screen text","audio":"Audio","motion":"Measured motion","transition":"Transition","note":"Mostly {size}, {sizePct} of the runtime; {cat} accounts for {catPct}. Longest shot {longest}, shortest {shortest}.","copy":"Copy","copied":"Copied","export":"Export JSON","sec":"s","shotsUnit":"","missing":"not generated","pass":"pass","fail":"fail","skip":"skipped","hints":"Hints (not blocking)","sound":"with audio","mute":"silent","colon":": ","sep":"   ","counts":"shots · share","no":"No.","keyframes":"Keyframes","span":"Time","say":"Text · Audio","motionShort":"measured","scrollHint":"stacks into labelled cards on narrow screens","paceHint":"width = duration · shade = shot size · click to jump","indexLabel":"Contents","pageShots":"Shots","pageAnalysis":"Distribution","pageCast":"Cast","pageQuality":"Quality","gatePassed":"passed","gateFailed":"failed","gateSkipped":"skipped","hintCount":"hints","playerTitle":"Source video","choose":"Pick a local file","ready":"Ready","playing":"Playing","paused":"Paused","ended":"Ended","videoMissing":"Source video not loaded — pick a local file","mismatch":"Video duration does not match the report","playError":"Cannot play this file — pick a format the browser supports","shot":"Current shot","noShot":"No shot at this time","help":"Playback highlights the current shot · click a shot to jump · click a frame to enlarge","progress":"Progress within the current shot","seek":"Jump to","searchHint":"Search shot no., frame, dialogue…","viewSwitch":"View","viewCards":"Cards","viewList":"List","sortLabel":"Sort shots","sortTimeline":"By timeline","sortLongest":"Duration · longest first","sortShortest":"Duration · shortest first","headFrames":"No. / first & last frame","headTime":"Time / duration","headTags":"Size / camera","noMatch":"No shots match","clearFilter":"Clear filters","showing":"Showing","unitShot":"shots","unitCut":"","unitSecond":"s","frameA":"first frame","frameB":"last frame","filterAll":"All shots","filterOther":"Other","exported":"JSON export started","audioMark":"A","textMark":"T","distTitle":"Size, category and camera","distCaption":"Share is by runtime, not shot count","sizeTitle":"Shot size","sizeSub":"Distance — how close the audience stands","catTitle":"Category","catSub":"Narrative function — what the shot is for","camTitle":"Camera","camSub":"Movement — how the emotion travels","castTitle":"Cast and shots","castCaption":"{n} in the cast · click to filter","castShots":"See {n} shots","castShotsOne":"See 1 shot","qualityOk":"All {n} quality gates passed","qualityBad":"{n} quality gates failed","qualityNote":"Timeline, keyframes and annotations are all checked deterministically by the script","hintTitle":"{n} hints to review","hintTitleOne":"1 hint to review","close":"Close","lightboxHint":"← → switch first/last frame　·　ESC to close","noscript":"Enable JavaScript for the interactive report. The raw data is in shots.json and shots.md next to this file."}};
+const DOC={"source":"demo-en.mp4","title":"","lang":"en","meta":{"durationSeconds":30.14,"fps":24,"width":1280,"height":720,"aspect":"16:9","codec":"h264","hasAudio":true},"params":{"sceneThreshold":0.3,"minShotSeconds":0.3},"seedCuts":[4.63,14.79,20.08,25],"manualCuts":[],"cast":[{"id":"P1","name":"The shopper","note":"Young woman in a pink tee, olive shoulder bag"},{"id":"P2","name":"Shop assistant","note":"Only the hand and forearm reach into frame"}],"shots":[{"id":"S01","start":0,"end":4.63,"seconds":4.63,"motion":11.95,"size":"medium-wide","category":"establishing","camera":"tracking","transitionIn":"cut","subjects":["P1"],"frame":"A young woman in a pink tee pulls open a metal shutter door, the sunlit alley and parked cars behind her","onscreenText":"","audio":"","rhythm":"hook","rhythmNote":"Opens on her back as she pushes the shutter open — no face yet, so you watch to find out who"},{"id":"S02","start":4.63,"end":14.79,"seconds":10.16,"motion":18.5,"size":"medium-wide","category":"subject","camera":"tracking","transitionIn":"cut","subjects":["P1"],"frame":"The camera follows her from behind along the pavement, past a lit bakery window stacked with bread and pedestrians crossing the frame","onscreenText":"","audio":"","rhythm":"setup","rhythmNote":"A ten-second walk lays out the street and where she is heading, unbroken"},{"id":"S03","start":14.79,"end":20.08,"seconds":5.29,"motion":4.5,"size":"close","category":"product","camera":"handheld","transitionIn":"cut","subjects":["P1"],"frame":"Both hands cradle the phone at chest height, the camera app open on screen and her thumb resting beside the shutter button","onscreenText":"","audio":"","rhythm":"beat","rhythmNote":"The phone fills the frame with the camera app open — the product finally lands"},{"id":"S04","start":20.08,"end":25,"seconds":4.92,"motion":4.7,"size":"medium-close","category":"subject","camera":"handheld","transitionIn":"cut","subjects":["P1","P2"],"frame":"Across the glass counter the assistant's hand slides a boxed phone toward her, price cards and display units lined up beside it","onscreenText":"iPhone","audio":"","rhythm":"payoff","rhythmNote":"The boxed phone slides across the counter into her hands: the walk gets its result"},{"id":"S05","start":25,"end":30.14,"seconds":5.14,"motion":22.3,"size":"medium-wide","category":"subject","camera":"tracking","transitionIn":"cut","subjects":["P1"],"frame":"She steps out of the shop doorway holding the box against her bag and walks off down the sloping street, traffic light ahead","onscreenText":"","audio":"","rhythm":"close","rhythmNote":"She leaves with the box down the sloping street, closing the errand"}]};
+const CFG={"frameDir":"frames","frames":{"S01":"ab","S02":"ab","S03":"ab","S04":"ab","S05":"ab"},"portraits":{"P1":"S03","P2":"S04"},"exportName":"demo-en-shots.json","labels":{"sizes":{"none":"n/a","extreme-wide":"extreme wide","wide":"wide","medium-wide":"medium wide","medium":"medium","medium-close":"medium close","close":"close-up","extreme-close":"extreme close-up"},"cats":{"establishing":"establishing","subject":"subject","dialogue":"dialogue","reaction":"reaction","insert":"insert","pov":"POV","empty":"empty","product":"product","text-card":"text card","transition":"transition","archive":"archive"},"cams":{"static":"static","push-in":"push in","pull-out":"pull out","zoom-in":"zoom in","zoom-out":"zoom out","pan-left":"pan left","pan-right":"pan right","tilt-up":"tilt up","tilt-down":"tilt down","truck-left":"truck left","truck-right":"truck right","pedestal-up":"pedestal up","pedestal-down":"pedestal down","tracking":"tracking","arc":"arc","whip-pan":"whip pan","handheld":"handheld","shake":"shake","rack-focus":"rack focus","micro-push":"micro push","roll":"roll","drone":"drone"},"trans":{"cut":"cut","dissolve":"dissolve","fade-in":"fade in","fade-out":"fade out","whip":"whip","match-cut":"match cut","wipe":"wipe","morph":"morph"},"rhythms":{"hook":"hook","setup":"setup","build":"build","beat":"beat","turn":"turn","payoff":"payoff","breath":"breath","close":"close"}},"rhythmColors":{"hook":"#d8e07a","setup":"#9fb488","build":"#8fb0a0","beat":"#c9a15e","turn":"#d98060","payoff":"#c56a4e","breath":"#7f8f9c","close":"#8a7fa0"},"hasRhythm":true,"colors":{"none":"#e4e8d9","extreme-wide":"#dae0c8","wide":"#c4cfaa","medium-wide":"#b0c091","medium":"#94aa74","medium-close":"#788f58","close":"#526f45","extreme-close":"#345136"},"filters":[["all","All shots"],["subject","subject"],["establishing","establishing"],["product","product"]],"words":{"title":"Shot Breakdown","shots":"Shots","total":"Duration","avg":"Avg shot","median":"Median shot","range":"Min / Max","rate":"Cuts per min","pace":"Pace strip","dist":"Distribution","table":"Shot list","gates":"Quality gates","size":"Size","category":"Category","camera":"Camera","frame":"Frame","subjects":"Subjects","text":"On-screen text","audio":"Audio","motion":"Measured motion","transition":"Transition","note":"Mostly {size}, {sizePct} of the runtime; {cat} accounts for {catPct}. Longest shot {longest}, shortest {shortest}.","copy":"Copy","copied":"Copied","export":"Export JSON","sec":"s","shotsUnit":"","missing":"not generated","pass":"pass","fail":"fail","skip":"skipped","hints":"Hints (not blocking)","sound":"with audio","mute":"silent","colon":": ","sep":"   ","counts":"shots · share","no":"No.","keyframes":"Keyframes","span":"Time","say":"Text · Audio","motionShort":"measured","rhythm":"Rhythm","rhythmTitle":"Rhythm role","rhythmSub":"why the viewer has not swiped away","scrollHint":"stacks into labelled cards on narrow screens","paceHint":"width = duration · shade = shot size · click to jump","indexLabel":"Contents","pageShots":"Shots","pageAnalysis":"Distribution","pageCast":"Cast","pageQuality":"Quality","gatePassed":"passed","gateFailed":"failed","gateSkipped":"skipped","hintCount":"hints","playerTitle":"Source video","choose":"Pick a local file","ready":"Ready","playing":"Playing","paused":"Paused","ended":"Ended","videoMissing":"Source video not loaded — pick a local file","mismatch":"Video duration does not match the report","playError":"Cannot play this file — pick a format the browser supports","shot":"Current shot","noShot":"No shot at this time","help":"Playback highlights the current shot · click a shot to jump · click a frame to enlarge","progress":"Progress within the current shot","seek":"Jump to","searchHint":"Search shot no., frame, dialogue…","viewSwitch":"View","viewCards":"Cards","viewList":"List","sortLabel":"Sort shots","sortTimeline":"By timeline","sortLongest":"Duration · longest first","sortShortest":"Duration · shortest first","headFrames":"No. / first & last frame","headTime":"Time / duration","headTags":"Size / camera","noMatch":"No shots match","clearFilter":"Clear filters","showing":"Showing","unitShot":"shots","unitCut":"","unitSecond":"s","frameA":"first frame","frameB":"last frame","filterAll":"All shots","filterOther":"Other","exported":"JSON export started","audioMark":"A","textMark":"T","distTitle":"Size, category and camera","distCaption":"Share is by runtime, not shot count","sizeTitle":"Shot size","sizeSub":"Distance — how close the audience stands","catTitle":"Category","catSub":"Narrative function — what the shot is for","camTitle":"Camera","camSub":"Movement — how the emotion travels","castTitle":"Cast and shots","castCaption":"{n} in the cast · click to filter","castShots":"See {n} shots","castShotsOne":"See 1 shot","qualityOk":"All {n} quality gates passed","qualityBad":"{n} quality gates failed","qualityNote":"Timeline, keyframes and annotations are all checked deterministically by the script","hintTitle":"{n} hints to review","hintTitleOne":"1 hint to review","close":"Close","lightboxHint":"← → switch first/last frame　·　ESC to close","noscript":"Enable JavaScript for the interactive report. The raw data is in shots.json and shots.md next to this file."}};
 /* video-shots 拉片报告的交互层。
  *
  * 数据只有两个入口，都由 render 内联在本文件之前：
@@ -772,7 +782,7 @@ const CFG={"frameDir":"frames","frames":{"S01":"ab","S02":"ab","S03":"ab","S04":
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const W = CFG.words;
-const { sizes, cats, cams } = CFG.labels;
+const { sizes, cats, cams, rhythms } = CFG.labels;
 const colors = CFG.colors;
 const icon = (n) => `<svg class="icon" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const fmt = (t) => {
@@ -831,6 +841,10 @@ function renderCards() {
 
   $('cards').innerHTML = shots.map((s) => {
     const who = (s.subjects ?? []).map((id) => esc(castName(id))).join(' / ') || '—';
+    const beat = s.rhythm
+      ? `<span class="beat"><i style="background:${CFG.rhythmColors[s.rhythm] || '#c4cfaa'}"></i>`
+        + `${esc(rhythms[s.rhythm] || s.rhythm)}</span>${s.rhythmNote ? ` <span class="beat-note">${esc(s.rhythmNote)}</span>` : ''}`
+      : '';
     const say = [
       s.audio ? `<div class="audio-text"><span>${W.audioMark} · </span>${esc(s.audio)}</div>` : '',
       s.onscreenText ? `<div class="audio-text"><span>${W.textMark} · </span>${esc(s.onscreenText)}</div>` : '',
@@ -841,11 +855,13 @@ function renderCards() {
       + `<div class="card-body"><div class="card-meta"><span class="mono">${fmt(s.start)}</span>`
       + `<span class="tag size">${esc(sizes[s.size] || s.size)}</span></div>`
       + `<p class="card-desc">${esc(s.frame)}</p>`
-      + `<div class="card-bottom"><span>${esc(cats[s.category] || s.category)}<span style="margin:0 5px">·</span>${esc(cams[s.camera] || s.camera)}</span><span>${who}</span></div></div>`
+      + `<div class="card-bottom"><span>${esc(cats[s.category] || s.category)}<span style="margin:0 5px">·</span>${esc(cams[s.camera] || s.camera)}</span><span>${who}</span></div>`
+      + (beat ? `<div class="card-beat">${beat}</div>` : '') + '</div>'
       + `<div class="row-content"><div class="row-time">${fmt(s.start)}<br>${fmt(s.end)}<b>${s.seconds.toFixed(2)} s</b></div>`
       + `<div class="row-tags"><span class="tag size">${esc(sizes[s.size] || s.size)}</span><span class="tag">${esc(cats[s.category] || s.category)}</span>`
       + `<span class="tag cam">${esc(cams[s.camera] || s.camera)}</span><span class="row-subject">${who}</span></div>`
-      + `<div class="row-desc">${esc(s.frame)}</div><div class="row-audio">${say}</div></div></button>`;
+      + `<div class="row-desc">${esc(s.frame)}${beat ? `<div class="row-beat">${beat}</div>` : ''}</div>`
+      + `<div class="row-audio">${say}</div></div></button>`;
   }).join('');
 
   playback?.refresh();
@@ -967,6 +983,7 @@ $('distributions').innerHTML = [
   ['size', W.sizeTitle, W.sizeSub, sizes],
   ['category', W.catTitle, W.catSub, cats],
   ['camera', W.camTitle, W.camSub, cams],
+  ...(CFG.hasRhythm ? [['rhythm', W.rhythmTitle, W.rhythmSub, rhythms]] : []),
 ].map(([field, title, subtitle, labels]) => {
   const values = Object.entries(labels).map(([k, label]) => {
     const items = SHOTS.filter((s) => s[field] === k);
@@ -1055,6 +1072,8 @@ function createReportPlayer(shots, options = {}) {
       el('player-range').textContent = shot ? `${fmt(shot.start)} → ${fmt(shot.end)}` : t.noShot;
       el('player-duration').textContent = shot ? `${Number(shot.seconds ?? (shot.end - shot.start)).toFixed(2)} s` : '—';
       el('player-description').textContent = shot?.frame || '';
+      el('player-beat').textContent = shot?.rhythm
+        ? `${CFG.labels.rhythms[shot.rhythm] || shot.rhythm}｜${shot.rhythmNote || ''}` : '';
       el('player-dialogue').textContent = [shot?.audio ? `${t.audio}: ${shot.audio}` : '', shot?.onscreenText ? `${t.text}: ${shot.onscreenText}` : ''].filter(Boolean).join(' / ');
       options.onShotChange?.(shot);
     }

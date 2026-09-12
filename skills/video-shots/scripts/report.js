@@ -10,7 +10,7 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const W = CFG.words;
-const { sizes, cats, cams } = CFG.labels;
+const { sizes, cats, cams, rhythms } = CFG.labels;
 const colors = CFG.colors;
 const icon = (n) => `<svg class="icon" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const fmt = (t) => {
@@ -69,6 +69,10 @@ function renderCards() {
 
   $('cards').innerHTML = shots.map((s) => {
     const who = (s.subjects ?? []).map((id) => esc(castName(id))).join(' / ') || '—';
+    const beat = s.rhythm
+      ? `<span class="beat"><i style="background:${CFG.rhythmColors[s.rhythm] || '#c4cfaa'}"></i>`
+        + `${esc(rhythms[s.rhythm] || s.rhythm)}</span>${s.rhythmNote ? ` <span class="beat-note">${esc(s.rhythmNote)}</span>` : ''}`
+      : '';
     const say = [
       s.audio ? `<div class="audio-text"><span>${W.audioMark} · </span>${esc(s.audio)}</div>` : '',
       s.onscreenText ? `<div class="audio-text"><span>${W.textMark} · </span>${esc(s.onscreenText)}</div>` : '',
@@ -79,11 +83,13 @@ function renderCards() {
       + `<div class="card-body"><div class="card-meta"><span class="mono">${fmt(s.start)}</span>`
       + `<span class="tag size">${esc(sizes[s.size] || s.size)}</span></div>`
       + `<p class="card-desc">${esc(s.frame)}</p>`
-      + `<div class="card-bottom"><span>${esc(cats[s.category] || s.category)}<span style="margin:0 5px">·</span>${esc(cams[s.camera] || s.camera)}</span><span>${who}</span></div></div>`
+      + `<div class="card-bottom"><span>${esc(cats[s.category] || s.category)}<span style="margin:0 5px">·</span>${esc(cams[s.camera] || s.camera)}</span><span>${who}</span></div>`
+      + (beat ? `<div class="card-beat">${beat}</div>` : '') + '</div>'
       + `<div class="row-content"><div class="row-time">${fmt(s.start)}<br>${fmt(s.end)}<b>${s.seconds.toFixed(2)} s</b></div>`
       + `<div class="row-tags"><span class="tag size">${esc(sizes[s.size] || s.size)}</span><span class="tag">${esc(cats[s.category] || s.category)}</span>`
       + `<span class="tag cam">${esc(cams[s.camera] || s.camera)}</span><span class="row-subject">${who}</span></div>`
-      + `<div class="row-desc">${esc(s.frame)}</div><div class="row-audio">${say}</div></div></button>`;
+      + `<div class="row-desc">${esc(s.frame)}${beat ? `<div class="row-beat">${beat}</div>` : ''}</div>`
+      + `<div class="row-audio">${say}</div></div></button>`;
   }).join('');
 
   playback?.refresh();
@@ -205,6 +211,7 @@ $('distributions').innerHTML = [
   ['size', W.sizeTitle, W.sizeSub, sizes],
   ['category', W.catTitle, W.catSub, cats],
   ['camera', W.camTitle, W.camSub, cams],
+  ...(CFG.hasRhythm ? [['rhythm', W.rhythmTitle, W.rhythmSub, rhythms]] : []),
 ].map(([field, title, subtitle, labels]) => {
   const values = Object.entries(labels).map(([k, label]) => {
     const items = SHOTS.filter((s) => s[field] === k);
@@ -293,6 +300,8 @@ function createReportPlayer(shots, options = {}) {
       el('player-range').textContent = shot ? `${fmt(shot.start)} → ${fmt(shot.end)}` : t.noShot;
       el('player-duration').textContent = shot ? `${Number(shot.seconds ?? (shot.end - shot.start)).toFixed(2)} s` : '—';
       el('player-description').textContent = shot?.frame || '';
+      el('player-beat').textContent = shot?.rhythm
+        ? `${CFG.labels.rhythms[shot.rhythm] || shot.rhythm}｜${shot.rhythmNote || ''}` : '';
       el('player-dialogue').textContent = [shot?.audio ? `${t.audio}: ${shot.audio}` : '', shot?.onscreenText ? `${t.text}: ${shot.onscreenText}` : ''].filter(Boolean).join(' / ');
       options.onShotChange?.(shot);
     }

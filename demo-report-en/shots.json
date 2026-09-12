@@ -50,7 +50,9 @@
       ],
       "frame": "A young woman in a pink tee pulls open a metal shutter door, the sunlit alley and parked cars behind her",
       "onscreenText": "",
-      "audio": ""
+      "audio": "",
+      "rhythm": "hook",
+      "rhythmNote": "Opens on her back as she pushes the shutter open — no face yet, so you watch to find out who"
     },
     {
       "id": "S02",
@@ -67,7 +69,9 @@
       ],
       "frame": "The camera follows her from behind along the pavement, past a lit bakery window stacked with bread and pedestrians crossing the frame",
       "onscreenText": "",
-      "audio": ""
+      "audio": "",
+      "rhythm": "setup",
+      "rhythmNote": "A ten-second walk lays out the street and where she is heading, unbroken"
     },
     {
       "id": "S03",
@@ -84,7 +88,9 @@
       ],
       "frame": "Both hands cradle the phone at chest height, the camera app open on screen and her thumb resting beside the shutter button",
       "onscreenText": "",
-      "audio": ""
+      "audio": "",
+      "rhythm": "beat",
+      "rhythmNote": "The phone fills the frame with the camera app open — the product finally lands"
     },
     {
       "id": "S04",
@@ -102,7 +108,9 @@
       ],
       "frame": "Across the glass counter the assistant's hand slides a boxed phone toward her, price cards and display units lined up beside it",
       "onscreenText": "iPhone",
-      "audio": ""
+      "audio": "",
+      "rhythm": "payoff",
+      "rhythmNote": "The boxed phone slides across the counter into her hands: the walk gets its result"
     },
     {
       "id": "S05",
@@ -119,7 +127,9 @@
       ],
       "frame": "She steps out of the shop doorway holding the box against her bag and walks off down the sloping street, traffic light ahead",
       "onscreenText": "",
-      "audio": ""
+      "audio": "",
+      "rhythm": "close",
+      "rhythmNote": "She leaves with the box down the sloping street, closing the errand"
     }
   ]
 }

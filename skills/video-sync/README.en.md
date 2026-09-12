@@ -27,16 +27,26 @@ rest of the canvas. Every dimension is rounded to an even number (h264 requires 
 panel's short side never drops below 260px (below that the text stops fitting). Details in
 [`references/layout.md`](references/layout.md).
 
-## One image per shot, not per frame
+## Three screenshots, and ffmpeg does the moving
 
-Only three things on the panel ever change: the current-shot card, which row is highlighted, and
-how far the list has scrolled. **All three change only at cuts** — nothing moves inside a shot.
-So 53 shots means 53 PNGs, laid out in a concat playlist by shot duration, and **the timing is
-ffmpeg's timestamps** — not 53 `enable=between(t,…)` overlay expressions, where one wrong entry
-is invisible.
+Only two things on the panel ever change: **how far the list has scrolled** and **which row is
+lit**. So neither per-frame screenshots nor one-per-shot:
 
-The trade-off, stated up front: **the panel jumps at each cut, there is no smooth scrolling
-animation.** Smooth would mean rendering every frame, which costs dozens of times more.
+```
+measure once  row positions, the list viewport, the full table height (the browser knows, the script cannot)
+shoot three   the static base (header + progress), the whole table dimmed, the whole table lit
+compose       crop a viewport out of the dimmed strip → scrolling
+              crop one row out of the lit strip → the highlight
+```
+
+For a 53-shot film that is 3 screenshots instead of 53 (12 seconds), and it buys **real continuous
+motion**: at each cut the list scrolls for 0.45s to bring the current shot to its anchor and then
+**stops** (a list that creeps for the whole of a 16-second take is just distracting); the
+highlight bar rides the same easing.
+
+Two traps, documented in [`references/layout.md`](references/layout.md): `drawbox` evaluates its
+expressions only once at init (so it cannot animate), and a whole-film expression makes ffmpeg's
+parser fail outright at around a hundred terms — hence `sendcmd` with one short command per shot.
 
 ## The layout is yours to change
 
@@ -47,11 +57,11 @@ the script or rethink the screenshot logic. Re-run `panels` and you have the new
 | | |
 | --- | --- |
 | <img src="assets/panel-landscape.png" width="440"> | <img src="assets/panel-portrait.png" width="200"> |
-| Landscape panel: current shot left, shot list right | Portrait panel: stacked |
+| Landscape: header + four columns (no./time/size/camera · frame · description · rhythm) | Portrait: the same four, narrow and tall |
 
 `panels` also writes `panels/panel.html` — **open it in a browser to preview**, add `#S07` to the
 URL to switch shots. Both layouts share one DOM and switch grid areas via `.landscape` /
-`.portrait` on the body, so there is no second template to forget about. Conventions in
+`.portrait` on `.panel`, so there is no second template to forget about. Conventions in
 [`references/panel-style.md`](references/panel-style.md).
 
 Font size scales with the panel (`base = clamp(12, min(width/38, height/26), 26)`), so the CSS
@@ -65,7 +75,7 @@ uses **rem everywhere** — this is video, and 13px that reads fine on a monitor
 # 1. Geometry only, no video work (seconds — check the numbers before committing)
 node scripts/video-sync.mjs plan shots.json --video clip.mp4
 
-# 2. Render panels: one PNG per shot, plus a previewable panel.html
+# 2. Render panels: three stills plus a previewable panel.html
 node scripts/video-sync.mjs panels shots.json --video clip.mp4 --frames frames --lang en
 
 # 3. Compose (audio is carried over from the source)
@@ -77,7 +87,7 @@ node scripts/video-sync.mjs export shots.json --video clip.mp4 --frames frames -
 
 Knobs: `--panel <ratio>` (landscape: panel height ÷ footage height, default 0.8; portrait: panel
 width ÷ footage width, default 1.6), `--width` / `--height` (caps on the footage area), `--crf`
-(quality), `--lang zh|en`.
+(quality), `--ease` (easing seconds at each cut), `--lang zh|en`.
 
 Requirements: `node` >= 18 (standard library only) + `ffmpeg` / `ffprobe` + a headless browser
 (Chrome / Chromium / Edge; `--chrome` takes a path). **No npm dependencies, no API keys.**
@@ -97,15 +107,15 @@ A mismatch usually means shots.json and the film are not the same clip.
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 73 assertions passed
+# ✅ 106 assertions passed
 ```
 
 No ffmpeg, no browser. It checks: geometry (landscape/square/portrait, even dimensions, caps,
 knobs, erroring instead of guessing when dimensions are unreadable); the panel page's data
-contract (vocabularies sent as names not enum keys, thumbnails only when the file exists,
-`<script>` escaped); the concat playlist (the last image must be repeated or the final shot has no
-duration); and the ffmpeg arguments (vstack/hstack, `setsar=1`, no audio mapping on a silent
-source, the film must be input 0).
+contract (vocabularies and rhythm roles sent as names not enum keys, thumbnails only when the file
+exists, `<script>` escaped); the animation commands (every one must stay short, a long take clamps
+once the scroll lands, `--ease` takes effect); and the ffmpeg arguments (vstack/hstack, `setsar=1`,
+all three stills need `-loop`, no audio mapping on a silent source, the film must be input 0).
 
 ## Bundled example
 

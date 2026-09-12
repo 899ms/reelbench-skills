@@ -3,16 +3,16 @@
 
 # video-shots
 
-**Shot breakdown** for a finished film: every shot's **duration, size, category, camera move
-and frame description**.
+**Shot breakdown** for a finished film: every shot's **duration, size, category, camera move,
+frame description and rhythm role**.
 
 The premise is baked in: **shot boundaries are measured, not eyeballed.** The least reliable
 thing a model does with video is report time, so there is a hard line down the middle:
 
 ```
 Code measures : cuts (ffmpeg scene detection) → duration (cut minus cut, 2 decimals) → motion (median frame difference)
-Model judges  : size → category → camera → frame        ← these four things, and nothing else
-Code checks   : 14 quality gates, one by one            ← a wrong call is blocked on the spot
+Model judges  : size → category → camera → frame → rhythm  ← these things, and nothing else
+Code checks   : 15 quality gates, one by one            ← a wrong call is blocked on the spot
 ```
 
 ![shots-report.html](assets/report.png)
@@ -76,7 +76,7 @@ whether the two halves are the same thing is something you have to look at again
 
 Editing `start` / `end` by hand fails the `boundary` gate: **a cut you added must be declared.**
 
-## Quality gates: 14 of them, all code
+## Quality gates: 15 of them, all code
 
 Same position as the skills this one learned from: **a checklist the model polices itself
 against is worthless.**
@@ -95,12 +95,13 @@ against is worthless.**
 | **Camera vs. measured motion** | Claiming a large move while the measurement is near zero → blocked (this direction only). Without `--track` the gate **says it is skipping** |
 | **Boundaries come from detection** | Every boundary is either in `seedCuts` or declared in `manualCuts`. Moving a cut out of thin air fails |
 | Keyframes present | The report embeds images; a missing one **is reported as missing**, never faked |
+| **Rhythm annotation is checkable** | `rhythm` is optional, but it is **all shots or none**; once tagged, the reason must say what the viewer sees, and filler is blocked |
 
 Every gate has a **breaking test case** in the self-test, proving it really blocks:
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 379 assertions passed (every one of the 14 gates has a breaking case)
+# ✅ 436 assertions passed (every one of the 15 gates has a breaking case)
 ```
 
 ## Usage
@@ -153,7 +154,7 @@ Requirements: `node` >= 18 (standard library only) + `ffmpeg` / `ffprobe`.
 | Top categories | dialogue 58%, reaction 10%, insert 9% |
 | Top camera | static 55%, handheld 42% |
 | Manual cuts | 10 (half dissolves, half end-title cards), all recorded in `manualCuts` |
-| Gates | all 14 green, with one motion hint left in as an example |
+| Gates | all 15 green, with two hints left in as examples (measured motion vs. a static call; six end-card shots in a row flattening the rhythm) |
 
 It is both the quality benchmark and the self-test fixture.
 

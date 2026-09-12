@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 import {
   DEFAULT_PARAMS, SHOT_SIZES, SHOT_CATEGORIES, CAMERA_MOVES, TRANSITIONS,
-  VAGUE_WORDS, VAGUE_WORDS_EN, MESSAGE_KEYS, msgs, gateLabel,
+  VAGUE_WORDS, VAGUE_WORDS_EN, MESSAGE_KEYS, msgs, gateLabel, RHYTHM_ROLES,
   buildSeed, recut, validate, stats, medianMotion, fmtTime, shotNo, renderMd, renderHtml, paramsOf,
 } from './video-shots.mjs';
 
@@ -78,9 +78,9 @@ const CTX = () => ({ track: baseTrack() });
 {
   const v = validate(baseDoc(), CTX());
   ok(v.ok, `基线稿应全绿（红的是：${v.failed.map((g) => g.id).join('、')}）`);
-  eq(v.gates.length, 14, '一共 14 道门');
+  eq(v.gates.length, 15, '一共 15 道门');
   eq(v.hints.length, 0, '基线没有提示');
-  eq(new Set(v.gates.map((g) => g.id)).size, 14, '门的 id 不重复');
+  eq(new Set(v.gates.map((g) => g.id)).size, 15, '门的 id 不重复');
 }
 
 /* ------------------------------------------------------------------ */
@@ -484,7 +484,7 @@ const cfgOf = (html) => JSON.parse(html.split('\n').find((l) => l.startsWith('co
   ok(!/\$\{/.test(html.slice(0, html.indexOf('const DOC='))), '壳里没有漏替换的模板占位');
   ok(html.includes('id="report-video"'), '有播放器');
   ok(html.includes('id="timeline"') && html.includes('id="cards"') && html.includes('id="distributions"'), '四块容器齐全');
-  eq((html.match(/<li class="(ok|bad|skip)"/g) ?? []).length, 14, '14 道门逐条列在页面上');
+  eq((html.match(/<li class="(ok|bad|skip)"/g) ?? []).length, 15, '15 道门逐条列在页面上');
   ok(html.includes('00:00') && html.includes('00:10.00'), '时间轴刻度取整、末尾补片长');
 
   const cfg = cfgOf(html);
@@ -561,6 +561,64 @@ const cfgOf = (html) => JSON.parse(html.split('\n').find((l) => l.startsWith('co
   const posterless = renderHtml(baseDoc(), CTX());
   ok(!posterless.includes('poster='), '没抽帧就不设封面');
   ok(renderHtml(baseDoc(), { ...CTX(), frameExists: { S01a: true } }).includes('poster="frames/S01a.jpg"'), '有首帧就当封面');
+}
+
+/* ------------------------------------------------------------------ */
+/* 15. 节奏分析：可选字段，但标了就得标全、标了就得说清为什么             */
+/* ------------------------------------------------------------------ */
+{
+  const beat = (patch = () => {}) => {
+    const doc = baseDoc();
+    doc.shots.forEach((s, i) => {
+      s.rhythm = ['hook', 'build', 'payoff'][i];
+      s.rhythmNote = ['开篇就把冻肉怼到脸上，反常画面先钉住人',
+        '手部特写把压力再往上推一层', '老太太终于说出那句话，前面的憋屈在这儿放掉'][i];
+    });
+    patch(doc);
+    return doc;
+  };
+
+  holds(beat(), 'rhythm', '整片标满、每条都有理由');
+  holds(baseDoc(), 'rhythm', '一镜都不标是允许的——这个字段可选');
+
+  fails(beat((d) => { delete d.shots[1].rhythm; delete d.shots[1].rhythmNote; }), 'rhythm',
+    '只标了一半——半张表汇总不出东西');
+  fails(beat((d) => { d.shots[0].rhythm = 'climax'; }), 'rhythm', '节奏角色不在词表里');
+  fails(beat((d) => { d.shots[0].rhythmNote = ''; }), 'rhythm', '标了角色却没写为什么');
+  fails(beat((d) => { d.shots[0].rhythmNote = '很带感'; }), 'rhythm', '理由太短');
+  fails(beat((d) => { d.shots[0].rhythmNote = '开篇氛围感很强，一下子就抓住人了'; }), 'rhythm',
+    '理由里是空话，不是观众看到了什么');
+  fails(beat((d) => { d.shots[0].rhythmNote = 'Visually stunning opening that hooks you'; }), 'rhythm',
+    '英文理由里的空话照样拦');
+  fails(beat((d) => { d.shots[0].rhythmNote = 'Opens cold'; }), 'rhythm', '英文理由太短（按词数）');
+
+  ok(Object.keys(RHYTHM_ROLES).length === 8, '节奏词表八个角色');
+  ok(RHYTHM_ROLES.hook && RHYTHM_ROLES.payoff && RHYTHM_ROLES.turn, '钩子/兑现/转折都在');
+  for (const [k, v] of Object.entries(RHYTHM_ROLES)) ok(v.color && v.zh && v.en, `${k} 有中英名与颜色`);
+
+  // 三条提示都不拦，但要指出短视频最常掉人的地方
+  const hintsOf = (doc, ctx = {}) => validate(doc, ctx).hints.join(' / ');
+  ok(hintsOf(beat((d) => { d.shots[0].rhythm = 'setup'; d.shots[0].rhythmNote = '先把地点和人交代清楚'; }))
+    .includes('钩子'), '开篇没钩子会提示');
+  ok(validate(beat((d) => { d.shots[0].rhythm = 'setup'; d.shots[0].rhythmNote = '先把地点和人交代清楚'; }))
+    .gates.find((g) => g.id === 'rhythm').ok, '但它只是提示，不拦');
+  ok(hintsOf(beat((d) => {
+    d.shots[0].rhythm = 'payoff'; d.shots[0].rhythmNote = '一上来就给结果，前面什么都没埋';
+  })).includes('兑现'), '兑现前面没有铺垫会提示');
+
+  const flat = baseDoc();
+  flat.meta.durationSeconds = 60;
+  flat.seedCuts = [];
+  flat.shots = Array.from({ length: 8 }, (_, i) => ({
+    id: shotNo(i), start: i * 7.5, end: (i + 1) * 7.5, seconds: 7.5,
+    size: 'medium', category: 'subject', camera: 'static', subjects: [],
+    frame: `第 ${i + 1} 镜：老太太在院子里来回走动，动作没有变化`,
+    onscreenText: '', audio: '', motion: 0.5,
+    rhythm: 'setup', rhythmNote: '继续交代环境，没有新信息进来',
+  }));
+  flat.shots[0].rhythm = 'hook';
+  flat.shots[0].rhythmNote = '开篇一记摔门声把人钉住，画面先给的是背影';
+  ok(validate(flat, {}).hints.some((h) => h.includes('节奏在这一段是平的')), '连着七镜同一个角色会提示节奏平');
 }
 
 /* ------------------------------------------------------------------ */
@@ -662,5 +720,5 @@ if (failures.length) {
   process.stderr.write(`\n通过 ${passed}／${passed + failures.length}\n`);
   process.exitCode = 1;
 } else {
-  process.stdout.write(`✅ ${passed} 项断言全部通过（14 道门每道都有击穿用例）\n`);
+  process.stdout.write(`✅ ${passed} 项断言全部通过（15 道门每道都有击穿用例）\n`);
 }

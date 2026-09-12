@@ -16,8 +16,9 @@ import { fileURLToPath } from 'node:url';
  *   横版 / 方版原片 → 画面在上，分镜信息在下
  *   竖版原片       → 画面在左，分镜信息在右
  *
- * 信息面板是一张 HTML 页面，**一个镜头截一张图**（不是逐帧渲染）：
- * 镜头切了，面板才切——高亮和滚动本来就只在切点上变，逐帧渲染是白烧机器。
+ * 信息面板是一张 HTML 页面。**只截三张图**——量一次行位置、截一张底板、
+ * 截一张把镜头表铺开的长图——剩下的交给 ffmpeg：滚动是按时间裁窗，
+ * 高亮是按时间画框，都是 t 的分段线性函数。逐帧截图要几千张，不干。
  * 面板的长相全在 panel.css 里，改它就能改布局，不用碰这个脚本。
  */
 
@@ -82,6 +83,18 @@ export const CAMERA_MOVES = {
   drone: { zh: '航拍移动', en: 'drone' },
 };
 
+/** 节奏角色：与 video-shots 的 RHYTHM_ROLES 同名同义（本 skill 自带一份，不跨目录 import）。 */
+export const RHYTHM_ROLES = {
+  hook: { zh: '钩子', en: 'hook', color: '#d8e07a' },
+  setup: { zh: '铺垫', en: 'setup', color: '#9fb488' },
+  build: { zh: '递进', en: 'build', color: '#8fb0a0' },
+  beat: { zh: '重音', en: 'beat', color: '#c9a15e' },
+  turn: { zh: '转折', en: 'turn', color: '#d98060' },
+  payoff: { zh: '兑现', en: 'payoff', color: '#c56a4e' },
+  breath: { zh: '换气', en: 'breath', color: '#7f8f9c' },
+  close: { zh: '收口', en: 'close', color: '#8a7fa0' },
+};
+
 export const TRANSITIONS = {
   cut: { zh: '硬切', en: 'cut' },
   dissolve: { zh: '叠化', en: 'dissolve' },
@@ -98,11 +111,13 @@ const I18N = {
     shots: '镜头', shot: '镜号', of: '共', duration: '时长', size: '景别', category: '类别',
     camera: '运镜', transition: '转场', frame: '画面', subjects: '主体', text: '画面文字',
     audio: '声音', motion: '实测运动', now: '当前镜头', sec: '秒',
+    rhythm: '节奏分析', headShot: '镜号 · 时间 · 景别 · 运镜', headFrame: '画面', headDesc: '画面描述',
   },
   en: {
     shots: 'Shots', shot: 'Shot', of: 'of', duration: 'Duration', size: 'Size', category: 'Category',
     camera: 'Camera', transition: 'Transition', frame: 'Frame', subjects: 'Subjects', text: 'On-screen text',
     audio: 'Audio', motion: 'Measured motion', now: 'Now playing', sec: 's',
+    rhythm: 'Rhythm', headShot: 'No. · time · size · camera', headFrame: 'Frame', headDesc: 'Description',
   },
 };
 
@@ -171,12 +186,101 @@ export function plan(meta, opts = {}) {
 }
 
 /* ------------------------------------------------------------------ */
+/* 动画：滚动与高亮都是时间的函数，交给 ffmpeg 逐帧算                    */
+/* ------------------------------------------------------------------ */
+/*
+ * 原来是「一个镜头截一张图」，面板在切点上跳变。要连续滚动只有两条路：
+ * 逐帧截图（几千张，慢到不能用），或者**截一张长图、让 ffmpeg 按时间裁窗**。
+ * 这里走后者：
+ *
+ *   list.png    整张镜头表铺开的长图（一次截图）
+ *   static.png  表头与进度条的底板（一次截图）
+ *   位置        由浏览器量出来（行高是 CSS 排的，脚本推不出来）
+ *
+ * 然后把「滚到哪」「哪一行亮」写成 t 的分段线性函数，交给 crop / drawbox 的
+ * 表达式逐帧求值。截图从 N 次降到 3 次，还换来了真正的连续滚动。
+ */
+
+/**
+ * 一段缓动的表达式：从 a 走到 b，用 d 秒，之后夹住不动。
+ * **必须短**——ffmpeg 的表达式解析器在一百来项上就崩（53 镜拼成一条 8000 字符的
+ * 表达式会让 crop 直接配置失败，踩过）。所以每个镜头只发自己这一段。
+ */
+export function ramp(a, b, start, dur) {
+  if (a === b || !(dur > 0)) return `${r2(a)}`;
+  const lo = Math.min(a, b);
+  const hi = Math.max(a, b);
+  return `clip(${r2(a)}+${r2(b - a)}*(t-${r2(start)})/${r2(dur)},${r2(lo)},${r2(hi)})`;
+}
+
+/** sendcmd 的命令文件：一行一条，`时刻 目标 参数 '表达式';` */
+export function commandFile(commands) {
+  return commands.map((c) => `${r2(c.time)} ${c.target} ${c.command} '${c.arg}';`).join('\n');
+}
+
+/**
+ * 滚动与高亮的时间函数——**每个镜头一条命令**，在切点处下发。
+ *
+ * 切点处滚一小段（默认 0.45 秒）把当前镜头带到锚点位置，**滚完就停住**：
+ * 长镜头里让列表一直慢慢爬会一直晃眼睛——动在切点上，静在镜头里。
+ * 高亮条和视窗用同一段缓动，所以是「一起滑过去」，不是一个跳一个滑。
+ */
+export function motionPlan({ shots, rows, view, content, easeSeconds = 0.45 }) {
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const row = (s) => byId.get(s.id) ?? { top: 0, height: 0 };
+  const rowHeight = Math.max(...rows.map((r) => r.height), 1);
+  const anchor = view.height * 0.28;
+  const maxOffset = Math.max(0, content - view.height);
+  const target = (s) => Math.min(maxOffset, Math.max(0, row(s).top - anchor));
+  const screenLo = view.y;
+  const screenHi = view.y + view.height - rowHeight;
+
+  const commands = [];
+  shots.forEach((s, i) => {
+    const prev = shots[i - 1];
+    const start = Number(s.start);
+    const span = Math.max(0.001, Number(s.end) - start);
+    const ease = Math.min(easeSeconds, span);
+    const fromOffset = prev ? target(prev) : target(s);
+    const toOffset = target(s);
+    const fromTop = prev ? row(prev).top : row(s).top;
+    const toTop = row(s).top;
+    const offset = ramp(fromOffset, toOffset, start, ease);
+    const top = ramp(fromTop, toTop, start, ease);
+
+    commands.push({ time: start, target: 'crop@win', command: 'y', arg: offset });
+    commands.push({ time: start, target: 'crop@band', command: 'y', arg: top });
+    commands.push({
+      time: start,
+      target: 'overlay@band',
+      command: 'y',
+      arg: `clip(${view.y}+(${top})-(${offset}),${r2(screenLo)},${r2(screenHi)})`,
+    });
+  });
+
+  const first = shots[0];
+  return {
+    commands,
+    initial: {
+      offset: first ? target(first) : 0,
+      top: first ? row(first).top : 0,
+      screenY: view.y + (first ? row(first).top - target(first) : 0),
+    },
+    rowHeight,
+    maxOffset,
+    anchor,
+    easeSeconds,
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* 面板页面：一张 HTML，靠 #S07 这样的 hash 决定高亮哪一镜               */
 /* ------------------------------------------------------------------ */
 
 const readAsset = (name) => readFileSync(new URL(`./${name}`, import.meta.url), 'utf8');
 
-export function panelHtml(doc, layout, ctx = {}) {
+/** 面板页面要用的数据。抽出来是为了让调参台和真产物用同一份构造逻辑。 */
+export function panelData(doc, ctx = {}) {
   const lang = ctx.lang ?? doc.lang ?? 'zh';
   const t = tOf(lang);
   const shots = doc.shots ?? [];
@@ -184,7 +288,7 @@ export function panelHtml(doc, layout, ctx = {}) {
   const frameDir = ctx.frameDir ?? null;
   const has = ctx.frameExists ?? {};
 
-  const data = {
+  return {
     title: doc.title || doc.source || '',
     source: doc.source ?? '',
     total,
@@ -193,6 +297,7 @@ export function panelHtml(doc, layout, ctx = {}) {
     frameDir,
     cast: Object.fromEntries((doc.cast ?? []).map((c) => [c.id, c.name])),
     colors: Object.fromEntries(Object.entries(SHOT_SIZES).map(([k, x]) => [k, x.color])),
+    rhythmColors: Object.fromEntries(Object.entries(RHYTHM_ROLES).map(([k, x]) => [k, x.color])),
     shots: shots.map((s) => ({
       id: s.id,
       start: Number(s.start),
@@ -208,18 +313,25 @@ export function panelHtml(doc, layout, ctx = {}) {
       onscreenText: s.onscreenText ?? '',
       audio: s.audio ?? '',
       motion: s.motion ?? null,
+      rhythm: s.rhythm ? labelOf(RHYTHM_ROLES, s.rhythm, lang) : '',
+      rhythmKey: s.rhythm ?? '',
+      rhythmNote: s.rhythmNote ?? '',
       thumb: frameDir && has[`${s.id}a`] ? `${frameDir}/${s.id}a.jpg` : '',
       startText: fmtTime(s.start),
       endText: fmtTime(s.end),
     })),
   };
+}
+
+export function panelHtml(doc, layout, ctx = {}) {
+  const data = panelData(doc, ctx);
 
   return readAsset('panel.html')
     .replace('/*__CSS__*/', readAsset('panel.css'))
     .replace('"__DATA__"', JSON.stringify(data).replace(/</g, '\\u003c'))
     .replace('"__LAYOUT__"', JSON.stringify(layout))
     .replace('__TITLE__', esc(data.title || 'panel'))
-    .replace('__LANG__', lang === 'en' ? 'en' : 'zh-CN');
+    .replace('__LANG__', data.lang === 'en' ? 'en' : 'zh-CN');
 }
 
 /* ------------------------------------------------------------------ */
@@ -277,13 +389,15 @@ const USAGE = `video-sync.mjs — 把拉片数据和原片合成一条视频
 
   panels <shots.json> --video <片> [--out panels] [--frames <关键帧目录>]
          [--lang zh|en] [--chrome <路径>] [--panel <比例>]
-      生成面板页面并**一个镜头截一张图** → <out>/S01.png…（外加 panel.html 供预览调样式）
+      量一次行位置 + 截两张图：static.png（表头与进度条的底板）、list.png（整张
+      镜头表铺开的长图），外加 panel.html 供预览调样式
 
-  compose <shots.json> --video <片> [--panels panels] [-o out.mp4] [--crf 20]
-      把画面与面板合成一条视频：横版上下叠、竖版左右并，音轨照搬原片
+  compose <shots.json> --video <片> [--panels panels] [-o out.mp4] [--crf 20] [--ease 0.28]
+      把画面与面板合成一条视频：横版上下叠、竖版左右并，音轨照搬原片。
+      切点处镜头表滚一小段到位、随后停住，高亮条同步滑过去（--ease 调这段秒数）
 
-  export <shots.json> --video <片> [-o out.mp4] [其余同上]
-      panels + compose 一条龙
+  export <shots.json> --video <片> [-o out.mp4] [--panels panels] [其余同上]
+      panels + compose 一条龙（中间产物放 --panels 指的目录，成片用 -o）
 
   面板的长相全在 scripts/panel.css 里，改它就能改布局，不用碰这个脚本。
 `;
@@ -330,34 +444,36 @@ function frameCtx(rest, doc) {
 }
 
 /**
- * 面板序列：concat 解复用器按镜头时长排好每一张面板图。
- * 时间对齐交给 ffmpeg 的时间戳，不靠 N 个 overlay 的 enable 表达式——
- * 53 个镜头就是 53 条 enable，写错一条没人看得出来。
- * 末尾必须重复最后一张：concat 不给最后一条 duration 记时长。
+ * ffmpeg 的完整参数。抽出来是为了能在不跑 ffmpeg 的情况下断言它。
+ *
+ * 四路输入：原片、底板（表头+进度条）、暗底长图、亮条长图。
+ *   滚动 = 从暗底长图按 `offset(t)` 裁一个视窗大小的窗口，盖到列表位置
+ *   高亮 = 从亮条长图按 `rowTop(t)` 裁一行高，盖到这一行此刻在屏幕上的位置
+ * 两个都用 crop + overlay——**只有这两个滤镜的表达式是逐帧求值的**；
+ * drawbox 的表达式在初始化时算一次就定死，拿它做动画得到的是一张不动的框（踩过）。
  */
-export function sequenceLines(shots, panelDir) {
-  const lines = [];
-  for (const s of shots) {
-    lines.push(`file '${resolve(panelDir, `${s.id}.png`)}'`);
-    lines.push(`duration ${r2(Number(s.end) - Number(s.start))}`);
-  }
-  lines.push(`file '${resolve(panelDir, `${shots[shots.length - 1].id}.png`)}'`);
-  return lines;
-}
-
-/** ffmpeg 的完整参数。抽出来是为了能在不跑 ffmpeg 的情况下断言它。 */
-export function composeArgs({ video, listFile, out, layout, hasAudio }) {
+export function composeArgs({
+  video, still, listDim, listLit, out, layout, motion, view, commands, hasAudio,
+}) {
   const { width: vw, height: vh } = layout.video;
   const { width: pw, height: ph } = layout.panel;
+  const { rowHeight, initial } = motion;
   const filter = [
     `[0:v]scale=${vw}:${vh}:flags=lanczos,setsar=1,fps=${layout.fps}[v]`,
-    `[1:v]scale=${pw}:${ph},setsar=1,fps=${layout.fps}[p]`,
-    `[v][p]${layout.stack}=inputs=2[out]`,
+    `[1:v]scale=${pw}:${ph},setsar=1,fps=${layout.fps},sendcmd=f='${commands}'[base]`,
+    `[2:v]fps=${layout.fps},crop@win=w=${view.width}:h=${view.height}:x=0:y=${initial.offset}[win]`,
+    `[3:v]fps=${layout.fps},crop@band=w=${view.width}:h=${rowHeight}:x=0:y=${initial.top}[band]`,
+    `[base][win]overlay@win=x=${view.x}:y=${view.y}[p0]`,
+    `[p0][band]overlay@band=x=${view.x}:y=${initial.screenY}[panel]`,
+    `[v][panel]${layout.stack}=inputs=2[out]`,
   ].join(';');
+
   const args = [
     '-v', 'error', '-y',
     '-i', video,
-    '-f', 'concat', '-safe', '0', '-i', listFile,
+    '-loop', '1', '-i', still,
+    '-loop', '1', '-i', listDim,
+    '-loop', '1', '-i', listLit,
     '-filter_complex', filter,
     '-map', '[out]',
   ];
@@ -379,7 +495,9 @@ function cmdPanels(rest) {
   const video = flag(rest, '--video');
   if (typeof video !== 'string') throw new Error('panels 要 --video <片>');
   const { layout } = geometryOf(rest, doc, video);
-  const outDir = typeof flag(rest, '--out') === 'string' ? flag(rest, '--out') : 'panels';
+  // --out 与 --panels 同义：export 一条龙时 -o 给成片，--panels 给中间产物
+  const outDir = typeof flag(rest, '--out') === 'string' ? flag(rest, '--out')
+    : typeof flag(rest, '--panels') === 'string' ? flag(rest, '--panels') : 'panels';
   const lang = flag(rest, '--lang');
   const chrome = findChrome(typeof flag(rest, '--chrome') === 'string' ? flag(rest, '--chrome') : null);
   mkdirSync(outDir, { recursive: true });
@@ -388,24 +506,33 @@ function cmdPanels(rest) {
   const page = join(outDir, 'panel.html');
   writeFileSync(page, html);
 
-  const shots = doc.shots ?? [];
-  let n = 0;
-  for (const s of shots) {
-    const out = join(outDir, `${s.id}.png`);
-    try {
-      execFileSync(chrome, [
-        '--headless', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
-        `--window-size=${layout.panel.width},${layout.panel.height}`,
-        '--virtual-time-budget=3000',
-        `--screenshot=${resolve(out)}`,
-        `file://${resolve(page)}#${s.id}`,
-      ], { stdio: 'ignore' });
-      n += 1;
-    } catch {
-      process.stderr.write(`[panels] ${s.id} 截图失败，跳过\n`);
-    }
+  const shot = (hash, w, h, file) => execFileSync(chrome, [
+    '--headless', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
+    `--window-size=${w},${h}`, '--virtual-time-budget=3000',
+    `--screenshot=${resolve(file)}`, `file://${resolve(page)}#${hash}`,
+  ], { stdio: 'ignore' });
+
+  // 一次 dump-dom 把每行的位置量回来：行高是 CSS 排出来的，脚本推不出来
+  const dom = execFileSync(chrome, [
+    '--headless', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
+    `--window-size=${layout.panel.width},${layout.panel.height}`, '--virtual-time-budget=3000',
+    '--dump-dom', `file://${resolve(page)}#measure`,
+  ], { encoding: 'utf8', maxBuffer: 1 << 28 });
+  const hit = /<pre id="measure">([\s\S]*?)<\/pre>/.exec(dom);
+  if (!hit) throw new Error('量不到行的位置——面板页面没渲出来，先用浏览器打开 panel.html 看看');
+  const measure = JSON.parse(hit[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+
+  const tallHeight = Math.max(layout.panel.height, measure.content);
+  if (tallHeight > 16000) {
+    throw new Error(`镜头表铺开有 ${tallHeight}px，超过浏览器的截图上限——把 --panel 调大一点，或者分段拉片`);
   }
-  process.stderr.write(`[panels] ${n}/${shots.length} 张 ${layout.panel.width}×${layout.panel.height} → ${outDir}/\n`);
+
+  shot('static', layout.panel.width, layout.panel.height, join(outDir, 'static.png'));
+  shot('tall', layout.panel.width, tallHeight, join(outDir, 'list-dim.png'));
+  shot('tall-lit', layout.panel.width, tallHeight, join(outDir, 'list-lit.png'));
+  writeFileSync(join(outDir, 'layout.json'), `${JSON.stringify({ ...measure, tallHeight }, null, 2)}\n`);
+
+  process.stderr.write(`[panels] 底板 ${layout.panel.width}×${layout.panel.height} + 长图 ×2（暗底/亮条）${layout.panel.width}×${tallHeight}，共 ${measure.rows.length} 行 → ${outDir}/\n`);
   process.stderr.write(`[panels] 面板页面 → ${page}（浏览器打开它调样式，改 panel.css 重跑即可）\n`);
 }
 
@@ -418,18 +545,33 @@ function cmdCompose(rest) {
   const out = typeof flag(rest, '-o') === 'string' ? flag(rest, '-o')
     : typeof flag(rest, '--out') === 'string' ? flag(rest, '--out')
       : `${basename(video).replace(/\.[^.]+$/, '')}-sync.mp4`;
-  const shots = doc.shots ?? [];
-  const missing = shots.filter((s) => !existsSync(join(panelDir, `${s.id}.png`)));
-  if (missing.length) throw new Error(`${panelDir}/ 里缺 ${missing.length} 张面板（${missing.slice(0, 3).map((s) => s.id).join(' ')}…），先跑 panels`);
-
-  const listFile = join(panelDir, '.sequence.txt');
-  writeFileSync(listFile, sequenceLines(shots, panelDir).join('\n'));
-  const args = composeArgs({ video, listFile, out, layout, hasAudio: meta.hasAudio });
+  const still = join(panelDir, 'static.png');
+  const listDim = join(panelDir, 'list-dim.png');
+  const listLit = join(panelDir, 'list-lit.png');
+  const layoutFile = join(panelDir, 'layout.json');
+  for (const f of [still, listDim, listLit, layoutFile]) {
+    if (!existsSync(f)) throw new Error(`${f} 不在，先跑 panels`);
+  }
+  const measure = readJson(layoutFile);
+  const ease = flag(rest, '--ease');
+  const motion = motionPlan({
+    shots: doc.shots ?? [],
+    rows: measure.rows,
+    view: measure.view,
+    content: measure.content,
+    easeSeconds: typeof ease === 'string' ? Number(ease) : undefined,
+  });
+  const cmdFile = join(panelDir, 'motion.cmd');
+  writeFileSync(cmdFile, `${commandFile(motion.commands)}\n`);
+  const args = composeArgs({
+    video, still, listDim, listLit, out, layout, motion,
+    view: measure.view, commands: resolve(cmdFile), hasAudio: meta.hasAudio,
+  });
 
   execFileSync('ffmpeg', args, { stdio: ['ignore', 'ignore', 'inherit'] });
-  rmSync(listFile, { force: true });
   const done = probe(out);
   process.stderr.write(`[compose] ${out} — ${done.width}×${done.height} / ${done.durationSeconds}s / ${layout.stack === 'vstack' ? '画面在上' : '画面在左'}\n`);
+  process.stderr.write(`[compose] 镜头表在切点处滚 ${motion.easeSeconds}s 到位后停住（全表 ${measure.content}px）\n`);
 }
 
 export function main(argv) {

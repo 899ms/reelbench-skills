@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   DEFAULT_PARAMS, SHOT_SIZES, SHOT_CATEGORIES, CAMERA_MOVES, TRANSITIONS,
-  plan, panelHtml, sequenceLines, composeArgs, fmtTime, paramsOf, findChrome,
+  plan, panelHtml, composeArgs, motionPlan, ramp, commandFile, fmtTime, paramsOf, findChrome,
 } from './video-sync.mjs';
 
 let passed = 0;
@@ -28,6 +28,7 @@ const doc = () => ({
     {
       id: 'S02', start: 4, end: 10, seconds: 6, size: 'close', category: 'dialogue', camera: 'push-in',
       transitionIn: 'dissolve', subjects: ['P1'], frame: '老太太侧脸贴着柜台', onscreenText: '十分钟前', audio: '老太太：给我拿药', motion: 5,
+      rhythm: 'payoff', rhythmNote: '憋了半天的那句话终于说出来',
     },
   ],
 });
@@ -91,7 +92,8 @@ const doc = () => ({
     '模板占位全部被替换');
   ok(!html.includes('/*__CSS__*/'), 'panel.css 被内联进来');
   ok(html.includes('.panel{'), '样式确实在页面里');
-  ok(html.includes('body.portrait') && html.includes('body.landscape'), '两种版式的样式都带着');
+  ok(html.includes('.panel{'), '面板样式收在 .panel 作用域里（这份 CSS 会被整段注进别的页面）');
+  ok(html.includes("classList.add(LAYOUT.portrait ? 'portrait' : 'landscape')"), '版式 class 打在面板元素上');
 
   const data = JSON.parse(html.split('\n').find((l) => l.startsWith('const DATA = ')).slice('const DATA = '.length, -1));
   eq(data.shots.length, 2, '镜头全给到页面');
@@ -102,11 +104,20 @@ const doc = () => ({
   eq(data.shots[0].subjects[0], '老太太', '主体下发人名，不是编号');
   eq(data.shots[0].startText, '00:00.00', '时间码在这一步算好');
   eq(data.total, 10, '片长给页面画进度条');
+  eq(data.shots[1].rhythm, '兑现', '节奏角色下发中文名');
+  eq(data.shots[1].rhythmKey, 'payoff', '同时下发枚举键，页面按它取色');
+  eq(data.shots[1].rhythmNote, '憋了半天的那句话终于说出来', '节奏理由原样带上');
+  eq(data.shots[0].rhythm, '', '没标节奏的镜头留空，不编');
+  ok(Object.keys(data.rhythmColors).length === 8, '节奏色阶全量下发');
+  ok(html.includes('listhead'), '面板有表头');
+  ok(html.includes('rbeat') && html.includes('beat-tag'), '行里有节奏那一格，角色写成 [钩子] 在句首');
   ok(Object.keys(data.colors).length === Object.keys(SHOT_SIZES).length, '景别色阶全量下发');
 
   const en = JSON.parse(panelHtml(doc(), layout, { lang: 'en' }).split('\n')
     .find((l) => l.startsWith('const DATA = ')).slice('const DATA = '.length, -1));
   eq(en.shots[0].size, 'wide', '英文界面下词表跟着切');
+  eq(en.shots[1].rhythm, 'payoff', '节奏角色也跟着切英文');
+  eq(en.words.rhythm, 'Rhythm', '表头文案跟着切');
   eq(en.words.subjects, 'Subjects', '文案跟着切');
   eq(en.shots[0].frame, doc().shots[0].frame, '画面描述是内容，原样不动');
 
@@ -126,16 +137,44 @@ const doc = () => ({
 }
 
 /* ------------------------------------------------------------------ */
-/* 面板序列：时间对齐交给 concat 的时间戳                                */
+/* 动画：每个镜头一条 sendcmd 命令                                       */
 /* ------------------------------------------------------------------ */
 {
-  const lines = sequenceLines(doc().shots, '/tmp/panels');
-  eq(lines.length, 5, '两镜 → file+duration ×2 + 末尾重复一行');
-  ok(lines[0].endsWith("S01.png'"), '第一张是 S01');
-  eq(lines[1], 'duration 4', '时长直接来自镜头，不重算');
-  eq(lines[3], 'duration 6', '第二镜 6 秒');
-  ok(lines[4].endsWith("S02.png'"), 'concat 要求重复最后一张，否则末镜没时长');
-  ok(lines.every((l) => l.startsWith('file ') || l.startsWith('duration ')), 'concat 清单只有这两种行');
+  eq(ramp(10, 10, 0, 0.45), '10', '起止相同就是个常数，不生成表达式');
+  eq(ramp(0, 100, 4, 0.5), 'clip(0+100*(t-4)/0.5,0,100)', '一段缓动：从 a 到 b，之后夹住');
+  eq(ramp(100, 0, 4, 0.5), 'clip(100+-100*(t-4)/0.5,0,100)', '往回滚也夹得住');
+  ok(ramp(0, 5000, 0, 0.45).length < 60,
+    '**表达式必须短**：ffmpeg 的解析器在一百来项上直接配置失败（踩过）');
+
+  const shots = [{ id: 'S01', start: 0, end: 4 }, { id: 'S02', start: 4, end: 40 }];
+  const rows = [{ id: 'S01', top: 0, height: 110 }, { id: 'S02', top: 117, height: 110 }];
+  const m = motionPlan({ shots, rows, view: { x: 27, y: 66, width: 600, height: 463 }, content: 6171 });
+
+  eq(m.commands.length, 6, '两镜 × 三个目标（视窗、亮条、亮条位置）');
+  eq(m.commands[0].target, 'crop@win', '第一条驱动滚动窗口');
+  eq(m.commands[1].target, 'crop@band', '第二条驱动亮条从长图哪儿裁');
+  eq(m.commands[2].target, 'overlay@band', '第三条驱动亮条盖在屏幕哪儿');
+  eq(m.commands[3].time, 4, '命令挂在切点上');
+  ok(m.commands[4].arg.includes('/0.45'), '默认缓动 0.45 秒');
+  ok(m.commands.every((c) => c.arg.length < 120), '每条命令都很短——这是换 sendcmd 的全部理由');
+  eq(m.rowHeight, 110, '亮条高度取最高的一行');
+
+  // 长镜头：36 秒的 S02 只在头 0.45 秒里滚，之后 clip 夹住不动
+  ok(m.commands[4].arg.startsWith('clip('), '滚完就被夹住，长镜头里纹丝不动');
+  eq(m.initial.offset, 0, '首帧的滚动位置');
+  eq(m.initial.screenY, 66, '首帧高亮条贴在列表顶边');
+
+  const text = commandFile(m.commands);
+  eq(text.split('\n').length, 6, '一行一条命令');
+  ok(/^0 crop@win y '/.test(text), 'sendcmd 的格式：时刻 目标 参数 表达式');
+  ok(text.trim().endsWith(';'), '每条以分号收尾');
+
+  const custom = motionPlan({ shots, rows, view: { x: 0, y: 0, width: 600, height: 463 }, content: 6171, easeSeconds: 0.8 });
+  ok(custom.commands[4].arg.includes('/0.8'), '--ease 能调这段秒数');
+
+  const flat = motionPlan({ shots, rows, view: { x: 0, y: 0, width: 600, height: 463 }, content: 200 });
+  eq(flat.maxOffset, 0, '内容没超出视窗就不滚');
+  eq(flat.commands[3].arg, '0', '不滚的时候命令就是个常数 0');
 }
 
 /* ------------------------------------------------------------------ */
@@ -143,30 +182,53 @@ const doc = () => ({
 /* ------------------------------------------------------------------ */
 {
   const layout = plan({ width: 1920, height: 1080 });
-  const args = composeArgs({ video: 'in.mp4', listFile: 'seq.txt', out: 'out.mp4', layout, hasAudio: true });
+  const view = { x: 12, y: 40, width: 1896, height: 700 };
+  const motion = motionPlan({
+    shots: [{ id: 'S01', start: 0, end: 4 }, { id: 'S02', start: 4, end: 10 }],
+    rows: [{ id: 'S01', top: 0, height: 50 }, { id: 'S02', top: 50, height: 60 }],
+    view, content: 2000,
+  });
+  ok(motion.commands.length === 6, '动画命令生成好了再拼参数');
+  const args = composeArgs({
+    video: 'in.mp4', still: 'static.png', listDim: 'dim.png', listLit: 'lit.png', out: 'out.mp4',
+    layout, motion, view, commands: '/tmp/motion.cmd', hasAudio: true,
+  });
   const filter = args[args.indexOf('-filter_complex') + 1];
+
   ok(filter.includes('scale=1920:1080'), '画面按算好的尺寸缩');
-  ok(filter.includes('scale=1920:864'), '面板按算好的尺寸缩');
+  ok(filter.includes('scale=1920:864'), '底板按面板尺寸缩');
+  ok(filter.includes(`crop@win=w=${view.width}:h=${view.height}`), '暗底长图按列表视窗裁');
+  ok(filter.includes(`crop@band=w=${view.width}:h=${motion.rowHeight}`), '亮条长图只裁一行高');
+  ok(filter.includes("sendcmd=f='/tmp/motion.cmd'"), '动画由 sendcmd 驱动');
+  ok(filter.includes('crop@win=') && filter.includes('crop@band=') && filter.includes('overlay@band='),
+    '三个被驱动的滤镜都起了名字，sendcmd 靠名字找它们');
+  ok(filter.includes(`overlay@win=x=${view.x}:y=${view.y}`), '窗口盖回列表的位置');
+  eq((filter.match(/overlay@/g) ?? []).length, 2, '两次 overlay：滚动窗口 + 高亮条');
+  ok(!filter.includes('drawbox'),
+    '不用 drawbox——它的表达式只在初始化时算一次，做不了动画（踩过）');
   ok(filter.includes('vstack=inputs=2'), '横版用 vstack');
   ok(filter.includes('setsar=1'), '两路都压平像素比，否则叠不上');
-  ok(filter.includes(`fps=${layout.fps}`), '两路统一帧率');
+  ok(filter.includes(`fps=${layout.fps}`), '各路统一帧率');
+
+  eq(args.filter((a) => a === '-loop').length, 3, '三张静态图都要 -loop，否则只有一帧');
+  eq(args[args.indexOf('-i') + 1], 'in.mp4', '原片是 0 号输入——换了顺序就成了面板在上');
   ok(args.includes('-map') && args.includes('0:a'), '有声就把原片音轨接过来');
-  ok(args.includes('-shortest'), '面板序列比片子长一点点，按短的收');
+  ok(args.includes('-shortest'), '静态图是无限长的，按原片收');
   ok(args.includes('yuv420p'), '像素格式按通用播放器来');
   eq(args[args.length - 1], 'out.mp4', '输出文件在最后');
 
-  const mute = composeArgs({ video: 'in.mp4', listFile: 'seq.txt', out: 'o.mp4', layout, hasAudio: false });
+  const mute = composeArgs({
+    video: 'in.mp4', still: 's.png', listDim: 'd.png', listLit: 'l.png', out: 'o.mp4',
+    layout, motion, view, commands: '/tmp/m.cmd', hasAudio: false,
+  });
   ok(!mute.includes('0:a'), '无声片不去接不存在的音轨');
 
   const tall = composeArgs({
-    video: 'in.mp4', listFile: 'seq.txt', out: 'o.mp4', hasAudio: false,
+    video: 'in.mp4', still: 's.png', listDim: 'd.png', listLit: 'l.png', out: 'o.mp4',
+    motion, view, commands: '/tmp/m.cmd', hasAudio: false,
     layout: plan({ width: 1080, height: 1920 }),
   });
   ok(tall[tall.indexOf('-filter_complex') + 1].includes('hstack=inputs=2'), '竖版用 hstack');
-
-  // 画面永远是第一路输入：换了顺序就变成「面板在上」
-  eq(args[args.indexOf('-i')], '-i', '第一个 -i 是原片');
-  eq(args[args.indexOf('-i') + 1], 'in.mp4', '原片是 0 号输入');
 }
 
 /* ------------------------------------------------------------------ */

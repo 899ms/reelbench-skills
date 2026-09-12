@@ -3,15 +3,18 @@
  * **这份文件就是面板的布局本身**——改它就能改版式，不用碰 video-sync.mjs，
  * 也不用重新截图逻辑：改完重跑 `panels` 就是新版面。
  *
- * 两种版式共用同一份 HTML，靠 body 上的 .landscape / .portrait 切换：
- *   .landscape  画面在上、面板在下 → 面板扁而宽，左「当前镜头」右「镜头表」
- *   .portrait   画面在左、面板在右 → 面板窄而高 → 上下叠
+ * 面板现在只剩两块：镜头表 + 进度条，两种版式的网格相同。
+ * .panel 身上仍挂着 .landscape / .portrait（挂在 panel 上而不是 body 上，
+ * 调参台里才能把两种版式并排摆着看），要给某一版式单独改样式就用它们起头。
  *
- * 字号跟着面板尺寸走（JS 设 html 的 font-size），所以这里**一律用 rem**，
+ * 字号跟着面板尺寸走（JS 设面板的 font-size），所以这里**一律用 rem**，
  * 写死 px 的地方只有边框和圆角。
+ *
+ * **每条规则都收在 .panel 作用域里**：这份 CSS 会被整段注进别的页面（调参台就是），
+ * 写裸的 .row / body 会串到人家的控件上——踩过。
  */
 
-:root{
+.panel{
   --bg:#12160f;
   --panel:#1a1f16;
   --line:#2c3427;
@@ -20,114 +23,134 @@
   --lime:#dceba7;
   --accent:#b9d07a;
   --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
-}
 
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{
+  width:100%;height:100%;
   background:var(--bg);
   color:var(--ink);
   overflow:hidden;
   font:1rem/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
   font-variant-numeric:tabular-nums;
-}
-.mono{font-family:var(--mono)}
-
-.panel{
-  width:100%;height:100%;
   display:grid;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr) auto;
+  grid-template-areas:"listhead" "list" "strip";
   gap:0.7rem 1.1rem;
   padding:0.9rem 1.2rem;
 }
-body.landscape .panel{
-  grid-template-columns:minmax(0,38%) minmax(0,1fr);
-  grid-template-rows:auto minmax(0,1fr) auto;
-  grid-template-areas:"head head" "now list" "strip strip";
-}
-body.portrait .panel{
-  grid-template-columns:minmax(0,1fr);
-  grid-template-rows:auto auto minmax(0,1fr) auto;
-  grid-template-areas:"head" "now" "list" "strip";
-}
 
-/* 片头一行 -------------------------------------------------------- */
-.head{
-  grid-area:head;
-  display:flex;align-items:baseline;justify-content:space-between;gap:1rem;
-  border-bottom:1px solid var(--line);padding-bottom:0.55rem;
-}
-.film{display:flex;align-items:baseline;gap:0.6rem;min-width:0}
-.film b{font-size:1.15rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.film span{font-size:0.62rem;color:var(--mute)}
-.counter{white-space:nowrap}
-.counter b{font-family:var(--mono);font-size:1.35rem;color:var(--lime)}
-.counter span{font-size:0.7rem;color:var(--mute);margin-left:0.25rem}
-
-/* 当前镜头 -------------------------------------------------------- */
-.now{
-  grid-area:now;min-width:0;
-  display:flex;flex-direction:column;gap:0.45rem;
-  background:var(--panel);border:1px solid var(--line);border-radius:0.5rem;
-  padding:0.75rem 0.9rem;
-}
-.now-head{display:flex;align-items:baseline;gap:0.7rem;flex-wrap:wrap}
-.now-head .no{font-family:var(--mono);font-size:1.6rem;color:var(--lime);line-height:1}
-.now-head .tc{font-size:0.72rem;color:var(--mute)}
-.now-head .dur{margin-left:auto;font-size:0.95rem;color:var(--accent)}
-.chips{display:flex;gap:0.35rem;flex-wrap:wrap}
-.chip{
-  display:inline-flex;align-items:center;gap:0.3rem;
-  font-size:0.7rem;line-height:1.9;padding:0 0.6rem;border-radius:1rem;
-  border:1px solid var(--line);background:#00000022;color:#d6ddcb;white-space:nowrap;
-}
-.chip i{width:0.45rem;height:0.45rem;border-radius:50%}
-.chip.cam{color:var(--accent);border-color:#3c4a30}
-.chip.tr{color:#e0c98a;border-color:#4a4026}
-.desc{margin:0.15rem 0 0;font-size:0.95rem;line-height:1.6}
-.lines{display:flex;flex-direction:column;gap:0.2rem;margin-top:auto}
-.line{font-size:0.72rem;color:var(--mute);line-height:1.5}
-.line b{color:#c3ccb6;font-weight:500;margin-right:0.45rem;font-size:0.66rem}
+.panel .mono{font-family:var(--mono)}
 
 /* 镜头表：整张渲出来，靠 transform 滚动 ---------------------------- */
-.list{grid-area:list;min-width:0;min-height:0;overflow:hidden;position:relative}
-.list:after{
+.panel .list{grid-area:list;min-width:0;min-height:0;overflow:hidden;position:relative}
+.panel .list:after{
   content:"";position:absolute;left:0;right:0;bottom:0;height:2.2rem;pointer-events:none;
   background:linear-gradient(to bottom,#12160f00,var(--bg));
 }
-.rows{display:flex;flex-direction:column;gap:0.22rem;transition:none}
-.row{
+.panel .rows{display:flex;flex-direction:column;gap:0.3rem}
+/* 只有浏览器预览里才做补间——导出时滚动由 ffmpeg 按同样的 0.45 秒缓动画，
+   截图阶段必须是静止状态，不然会截到动画中间 */
+.panel.live .rows{transition:transform .45s cubic-bezier(.22,.61,.36,1)}
+.panel.live .row{transition:opacity .45s ease,background-color .45s ease}
+.panel.tall .rows,.panel.static .rows{transition:none}
+.panel .row{
+  position:relative;                 /* 镜号靠绝对定位钉在左上角 */
   display:grid;
-  grid-template-columns:0.45rem 3.4rem 2.6rem 4.2rem 5rem minmax(0,1fr);
-  align-items:center;gap:0.55rem;
-  padding:0.3rem 0.5rem;border-radius:0.35rem;
+  grid-template-columns:8.6rem 7.4rem minmax(0,1.15fr) minmax(0,1fr);
+  align-items:start;
+  gap:0.2rem 1rem;
+  padding:0.4rem 0.55rem;border-radius:0.35rem;
   opacity:.42;
 }
-.row.done{opacity:.28}
-.row.on{
+.panel .row.done{opacity:.28}
+.panel .row.on{
   opacity:1;background:#232b1c;
   box-shadow:inset 0.16rem 0 0 var(--lime);
 }
-.dot{width:0.45rem;height:0.45rem;border-radius:50%}
-.thumb{width:3.4rem;aspect-ratio:16/9;object-fit:cover;border-radius:0.2rem;display:block}
-.thumb.blank{background:#222a1d;border-radius:0.2rem;aspect-ratio:16/9;width:3.4rem}
-.rno{font-size:0.72rem;color:var(--lime)}
-.row.on .rno{font-weight:600}
-.rtime{font-size:0.6rem;color:var(--mute);line-height:1.3}
-.rtime i{display:block;font-style:normal;color:#c3ccb6}
-.rtags{font-size:0.62rem;color:#bcc6ad;line-height:1.3}
-.rtags i{display:block;font-style:normal;color:var(--mute)}
-.rdesc{
-  font-size:0.74rem;line-height:1.4;color:#d3dac8;
+.panel .rno{
+  position:absolute;left:0.55rem;top:0.3rem;
+  font-size:0.92rem;line-height:1.2;color:var(--lime);
+}
+.panel .row.on .rno{font-weight:600}
+
+/* 表头：与行同一套列宽，改列宽两处一起改 */
+.panel .listhead{
+  grid-area:listhead;
+  display:grid;
+  grid-template-columns:8.6rem 7.4rem minmax(0,1.15fr) minmax(0,1fr);
+  gap:0.2rem 1rem;
+  padding:0 0.55rem 0.4rem;
+  border-bottom:1px solid var(--line);
+  font-size:0.62rem;letter-spacing:0.06em;color:var(--mute);
+}
+
+/* 第二格：缩略图 */
+.panel .thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0.2rem;display:block}
+.panel .thumb.blank{background:#222a1d}
+
+/* 时间与镜头信息并成一格 */
+.panel .rinfo{display:flex;flex-direction:column;gap:0.12rem;min-width:0;padding-top:1.3rem}
+.panel .rtime{font-size:0.74rem;color:var(--mute);line-height:1.35}
+.panel .rtime i{font-style:normal;color:#c3ccb6;margin-left:0.35rem}
+.panel .rtags{
+  display:flex;align-items:center;gap:0.28rem;
+  font-size:0.8rem;color:#bcc6ad;line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.panel .dot{width:0.46rem;height:0.46rem;border-radius:50%;flex-shrink:0}
+
+.panel .rdesc{
+  font-size:0.95rem;line-height:1.5;color:#d3dac8;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
-body.portrait .row{grid-template-columns:0.45rem 3.4rem 2.6rem 4.2rem minmax(0,1fr)}
-body.portrait .rtags{display:none}
+.panel .row.on .rdesc{color:var(--ink)}
+
+/* 第四格：节奏分析。角色直接用 [钩子] 写在句首，和描述一样大——
+   这一格是给人读的判断，不是标签墙。 */
+.panel .rbeat{
+  min-width:0;
+  font-size:0.95rem;line-height:1.5;color:#bcc6ad;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.panel .beat-tag{font-style:normal;font-weight:600;margin-right:0.35rem}
+.panel .row.on .rbeat{color:#d3dac8}
+.panel.no-beat .rbeat{display:none}
+.panel.no-beat .row,.panel.no-beat .listhead{grid-template-columns:8.6rem 7.4rem minmax(0,1fr)}
+.panel.no-beat .listhead span:nth-child(4){display:none}
 
 /* 进度条 ---------------------------------------------------------- */
-.strip{
+.panel .strip{
   grid-area:strip;display:flex;gap:1px;height:0.55rem;
   border-radius:0.3rem;overflow:hidden;background:#0c0f09;
 }
-.seg{display:block;height:100%;opacity:.22}
-.seg.done{opacity:.5}
-.seg.on{opacity:1}
+.panel .seg{display:block;height:100%;opacity:.22}
+.panel .seg.done{opacity:.5}
+.panel .seg.on{opacity:1}
+
+/* 内容开关：给 .panel 加这些 class 就能关掉对应的块。
+ * 调参台的「内容开关」按钮切的就是它们——想永久去掉某一块，
+ * 把对应的 class 写进 panel.html 的 <div class="panel"> 上即可。 */
+.panel.no-strip .strip{display:none}
+.panel.no-thumb .thumb{display:none}
+.panel.no-thumb .row{grid-template-columns:8.6rem minmax(0,1.15fr) minmax(0,1fr)}
+.panel.no-thumb .listhead{grid-template-columns:8.6rem minmax(0,1.15fr) minmax(0,1fr)}
+.panel.no-thumb .listhead span:nth-child(2){display:none}
+.panel.no-tags .rtags{display:none}
+.panel.no-desc .rdesc{display:none}
+.panel.no-time .rtime{display:none}
+
+/* 导出用的三种模式 ------------------------------------------------ */
+/* 长图：只留镜头表，铺开到整张表的高度，所有行一样亮
+   （谁亮谁暗由 ffmpeg 按时间画，一张图就能滚起来） */
+.panel.tall{height:auto;grid-template-rows:auto;grid-template-areas:"list";padding-top:0;padding-bottom:0}
+.panel.tall .listhead,.panel.tall .strip{display:none}
+.panel.tall .list{overflow:visible;min-height:0}
+.panel.tall .list:after{display:none}
+.panel.tall .row{opacity:.42}
+.panel.tall .row.on{background:none;box-shadow:none}
+/* 亮条长图：每行都按「当前镜头」的样子渲，合成时只裁其中一行盖上去 */
+.panel.tall.lit .row{opacity:1;background:#232b1c;box-shadow:inset 0.16rem 0 0 var(--lime)}
+.panel.tall.lit .rdesc,.panel.tall.lit .rbeat{color:#e7ecdf}
+
+/* 底板：表头与进度条留着，镜头表位置留空，等长图盖上来 */
+.panel.static .rows{visibility:hidden}
+.panel.static .list:after{display:none}

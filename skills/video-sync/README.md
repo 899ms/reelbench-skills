@@ -22,13 +22,23 @@
 两个方向都保证**画面原样缩放、不裁不拉**，面板补足剩下的画布。所有边长取偶数（h264 的要求），
 面板最短边不低于 260px（再小字就放不下）。详见 [`references/layout.md`](references/layout.md)。
 
-## 一个镜头一张图，不是逐帧渲染
+## 只截三张图，动的部分交给 ffmpeg
 
-面板上会变的只有三样：当前镜头卡、高亮哪一行、滚动到哪。**这三样只在切点上变**，
-镜头内部一帧都不动。所以 53 个镜头就是 53 张 PNG，按镜头时长排进 concat 清单，
-**时间对齐交给 ffmpeg 的时间戳**——不靠 53 条 `enable=between(t,…)` 的 overlay，那种写法错一条没人看得出来。
+面板上会变的只有两样：**滚到哪**、**哪一行亮**。所以既不逐帧截图，也不一个镜头截一张：
 
-代价说在前面：**面板在切点上跳变，没有平滑滚动动画**。要平滑就得逐帧渲染，成本涨几十倍。
+```
+量一次  每行的位置、列表视窗、整张表的高（浏览器量，脚本推不出来）
+截三张  底板（表头+进度条）、整张表压暗的长图、整张表全亮的长图
+合成    暗底长图裁一个视窗 → 滚动；亮条长图裁一行 → 高亮
+```
+
+53 镜的片子截图从 53 次降到 3 次（12 秒），换来的是**真正的连续动画**：
+切点处滚 0.45 秒把当前镜头带到锚点、**随后停住**（长镜头里一直爬只会晃眼），
+高亮条和视窗用同一段缓动一起滑过去。
+
+两个踩过的坑写在 [`references/layout.md`](references/layout.md) 里：
+`drawbox` 的表达式只在初始化时算一次（动不了）；把整片拼成一条大表达式，
+ffmpeg 的解析器在一百来项上直接配置失败——所以改用 `sendcmd`，每镜一条小命令。
 
 ## 布局你随便改
 
@@ -38,10 +48,10 @@
 | | |
 | --- | --- |
 | <img src="assets/panel-landscape.png" width="440"> | <img src="assets/panel-portrait.png" width="200"> |
-| 横版面板：左「当前镜头」右「镜头表」 | 竖版面板：上下叠 |
+| 横版面板：表头 + 四格（镜号时间景别运镜 / 画面 / 画面描述 / 节奏分析） | 竖版面板：同样四格，窄而高 |
 
 `panels` 还会顺手写一张 `panels/panel.html`——**浏览器打开就能预览**，地址后加 `#S07` 换镜头。
-两种版式共用同一份 DOM，靠 body 上的 `.landscape` / `.portrait` 切 grid，
+两种版式共用同一份 DOM，靠 `.panel` 上的 `.landscape` / `.portrait` 切 grid，
 不写第二份模板也就不会改了一边忘了另一边。约定见 [`references/panel-style.md`](references/panel-style.md)。
 
 字号跟着面板尺寸走（`base = clamp(12, min(宽/38, 高/26), 26)`），所以 CSS 里**一律用 rem**——
@@ -55,7 +65,7 @@
 # 1. 只算几何，不动视频（几秒出结果，先确认尺寸再往下走）
 node scripts/video-sync.mjs plan shots.json --video clip.mp4
 
-# 2. 渲面板：一个镜头一张 PNG + 一张可预览的 panel.html
+# 2. 渲面板：三张图 + 一张可预览的 panel.html
 node scripts/video-sync.mjs panels shots.json --video clip.mp4 --frames frames --lang zh
 
 # 3. 合成（音轨照搬原片）
@@ -66,7 +76,7 @@ node scripts/video-sync.mjs export shots.json --video clip.mp4 --frames frames -
 ```
 
 调版式：`--panel <比例>`（横版是面板高÷画面高，默认 0.8；竖版是面板宽÷画面宽，默认 1.6）、
-`--width` / `--height`（画面区上限）、`--crf`（质量）、`--lang zh|en`。
+`--width` / `--height`（画面区上限）、`--crf`（质量）、`--ease`（切点缓动秒数）、`--lang zh|en`。
 
 依赖：`node` >= 18（只用标准库）+ `ffmpeg` / `ffprobe` + 一个无头浏览器
 （Chrome / Chromium / Edge，`--chrome` 可指路径）。**零 npm 依赖、零 API key。**
@@ -85,13 +95,13 @@ for t in 5 30 60; do ffmpeg -v error -y -ss $t -i out.mp4 -frames:v 1 -q:v 3 /tm
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 73 项断言全部通过
+# ✅ 106 项断言全部通过
 ```
 
 不碰 ffmpeg、不开浏览器，查的是：几何（横/方/竖、偶数边长、上下限、旋钮、读不出宽高就报错）、
-面板页面的数据契约（词表下发中文名而不是枚举键、缩略图有才给、`<script>` 转义）、
-concat 清单（末尾必须重复最后一张，否则末镜没时长）、ffmpeg 参数（vstack/hstack、
-`setsar=1`、无声片不接音轨、原片必须是 0 号输入）。
+面板页面的数据契约（词表与节奏角色下发中文名而不是枚举键、缩略图有才给、`<script>` 转义）、
+动画命令（每条都必须短、长镜头滚完就夹住、`--ease` 生效）、
+ffmpeg 参数（vstack/hstack、`setsar=1`、三张静态图都要 `-loop`、无声片不接音轨、原片必须是 0 号输入）。
 
 ## 自带样例
 
