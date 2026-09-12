@@ -1,12 +1,12 @@
 {
   "source": "demo-en.mp4",
-  "title": "",
+  "title": "The Shawshank Redemption — rooftop tarring",
   "lang": "en",
   "meta": {
-    "durationSeconds": 30.14,
-    "fps": 24,
-    "width": 1280,
-    "height": 720,
+    "durationSeconds": 287.37,
+    "fps": 23.98,
+    "width": 640,
+    "height": 360,
     "aspect": "16:9",
     "codec": "h264",
     "hasAudio": true
@@ -16,120 +16,989 @@
     "minShotSeconds": 0.3
   },
   "seedCuts": [
-    4.63,
-    14.79,
-    20.08,
-    25
+    11.97,
+    21.23,
+    44.21,
+    48.42,
+    51.18,
+    65.19,
+    69.15,
+    75.41,
+    84.46,
+    88.71,
+    90.34,
+    95.72,
+    102.02,
+    105.52,
+    108.53,
+    110.11,
+    111.36,
+    112.2,
+    113.45,
+    115.57,
+    142.89,
+    148.57,
+    150.61,
+    157.82,
+    160.24,
+    166.54,
+    169.5,
+    172.96,
+    175.47,
+    183.93,
+    186.19,
+    188.94,
+    192.03,
+    200.37,
+    247.29,
+    251.75,
+    258.09,
+    263.6,
+    267.18,
+    269.52,
+    274.23,
+    277.07,
+    279.28
   ],
-  "manualCuts": [],
+  "manualCuts": [
+    23.77,
+    59.77
+  ],
   "cast": [
     {
       "id": "P1",
-      "name": "The shopper",
-      "note": "Young woman in a pink tee, olive shoulder bag"
+      "name": "Andy Dufresne",
+      "note": "the banker on the tarring crew"
     },
     {
       "id": "P2",
-      "name": "Shop assistant",
-      "note": "Only the hand and forearm reach into frame"
+      "name": "Red",
+      "note": "the narrator; tells the story in voice-over"
+    },
+    {
+      "id": "P3",
+      "name": "Captain Hadley",
+      "note": "the guard captain in the peaked cap"
+    },
+    {
+      "id": "P4",
+      "name": "the guards",
+      "note": "Hadley’s men on the roof detail (Mert among them)"
+    },
+    {
+      "id": "P5",
+      "name": "the tarring crew",
+      "note": "the other convicts working the roof — counted as one group"
     }
   ],
   "shots": [
     {
       "id": "S01",
       "start": 0,
-      "end": 4.63,
-      "seconds": 4.63,
-      "motion": 11.95,
-      "size": "medium-wide",
+      "end": 11.97,
+      "seconds": 11.97,
+      "motion": 7.65,
+      "size": "wide",
       "category": "establishing",
-      "camera": "tracking",
+      "camera": "pan-right",
       "transitionIn": "cut",
       "subjects": [
-        "P1"
+        "P3",
+        "P5"
       ],
-      "frame": "A young woman in a pink tee pulls open a metal shutter door, the sunlit alley and parked cars behind her",
+      "frame": "Wide across the tarred factory roof: convicts in grey drag mops through black pitch while dark-uniformed guards line the parapet, green fields running off beyond the wall.",
       "onscreenText": "",
-      "audio": "",
+      "audio": "Red (voice-over): \"So this big-shot lawyer calls me long-distance from Texas.\" / Guard: \"I’m sorry to hear that.\" / Hadley: \"I’m not. He was an asshole.\"",
       "rhythm": "hook",
-      "rhythmNote": "Opens on her back as she pushes the shutter open — no face yet, so you watch to find out who"
+      "rhythmNote": "Opens on men mopping hot pitch while a guard’s voice is already talking about a Texas lawyer and a dead brother — the money arrives before anyone explains who is speaking."
     },
     {
       "id": "S02",
-      "start": 4.63,
-      "end": 14.79,
-      "seconds": 10.16,
-      "motion": 18.5,
-      "size": "medium-wide",
-      "category": "subject",
-      "camera": "tracking",
+      "start": 11.97,
+      "end": 21.23,
+      "seconds": 9.26,
+      "motion": 15.2,
+      "size": "close",
+      "category": "insert",
+      "camera": "tilt-up",
       "transitionIn": "cut",
       "subjects": [
-        "P1"
+        "P5"
       ],
-      "frame": "The camera follows her from behind along the pavement, past a lit bakery window stacked with bread and pedestrians crossing the frame",
+      "frame": "Tight on molten black pitch being dragged flat by a squeegee, the surface glossy as oil, before the frame lifts to a convict bent over the mop.",
       "onscreenText": "",
-      "audio": "",
-      "rhythm": "setup",
-      "rhythmNote": "A ten-second walk lays out the street and where she is heading, unbroken"
+      "audio": "Hadley (off-screen): \"Ran off years ago. Figured him for dead.\" ... \"He died a rich man. Oil wells and shit. Close to a million bucks.\"",
+      "rhythm": "build",
+      "rhythmNote": "The number lands on a shot of the work itself — a million dollars spoken over men pushing tar in the heat."
     },
     {
       "id": "S03",
-      "start": 14.79,
-      "end": 20.08,
-      "seconds": 5.29,
-      "motion": 4.5,
-      "size": "close",
-      "category": "product",
+      "start": 21.23,
+      "end": 23.77,
+      "seconds": 2.54,
+      "motion": 17.35,
+      "size": "medium-wide",
+      "category": "reaction",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P5"
+      ],
+      "frame": "Two convicts hunched over the pitch with their backs to camera, caps down, the prison field flat behind the parapet.",
+      "onscreenText": "",
+      "audio": "Convict: \"A million bucks?\"",
+      "note": "manual cut at 23.77 — the detector scored it 0.24, just under the 0.30 threshold",
+      "rhythm": "beat",
+      "rhythmNote": "The crew repeats the figure back — two and a half seconds that confirm every man on the roof is listening to the guards."
+    },
+    {
+      "id": "S04",
+      "start": 23.77,
+      "end": 44.21,
+      "seconds": 20.44,
+      "motion": 7.9,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3",
+        "P4"
+      ],
+      "frame": "Hadley squared off against two younger guards at the red brick stair house, three peaked caps at three heights, the framing drifting with them through the whole argument.",
+      "onscreenText": "",
+      "audio": "Guard: \"Incredible how lucky some assholes get.\" \"You going to see any of that?\" / Hadley: \"Thirty-five thousand. That’s what he left me.\" / Guard: \"Dumb shit, what do you think the government will do to me?\"",
+      "note": "manual cut at 23.77; the guards’ argument runs 20.44s handheld with no cut",
+      "rhythm": "setup",
+      "rhythmNote": "Twenty seconds that lay out the thirty-five thousand and the tax on it — everything Andy offers later is priced off this conversation."
+    },
+    {
+      "id": "S05",
+      "start": 44.21,
+      "end": 48.42,
+      "seconds": 4.21,
+      "motion": 13.3,
+      "size": "medium",
+      "category": "subject",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P5"
+      ],
+      "frame": "A convict in a sweat-soaked undershirt hauls a long-handled mop back across the pitch, another man’s shoulder swinging through the foreground.",
+      "onscreenText": "",
+      "audio": "Hadley (off-screen): \"Terrible fucking luck, huh? Crying shame.\"",
+      "rhythm": "build",
+      "rhythmNote": "Cutting back to the labour keeps the guards’ windfall talk running over the sound of work — the gap between the two sides stays in frame."
+    },
+    {
+      "id": "S06",
+      "start": 48.42,
+      "end": 51.18,
+      "seconds": 2.76,
+      "motion": 2.4,
+      "size": "medium-close",
+      "category": "reaction",
       "camera": "handheld",
       "transitionIn": "cut",
       "subjects": [
         "P1"
       ],
-      "frame": "Both hands cradle the phone at chest height, the camera app open on screen and her thumb resting beside the shutter button",
+      "frame": "Andy straightens up over his mop and holds still, eyes off to the left toward the guards, the wet roof and the crew soft behind him.",
+      "onscreenText": "",
+      "audio": "Hadley (off-screen): \"Some people really got it awful.\"",
+      "rhythm": "beat",
+      "rhythmNote": "The mop stops mid-stroke and the cut holds nearly three seconds on a man who has just heard something he can use."
+    },
+    {
+      "id": "S07",
+      "start": 51.18,
+      "end": 59.77,
+      "seconds": 8.59,
+      "motion": 9,
+      "size": "medium",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P2",
+        "P5"
+      ],
+      "frame": "Andy and Red work side by side at the pitch barrel, Red’s arm slung over the handle, both dropping back down to the roof as they talk.",
+      "onscreenText": "",
+      "audio": "Hadley (off-screen): \"You’ll pay some tax, but you’ll still end up—\"",
+      "note": "manual cut at 59.77 — the detector scored it 0.25, just under the 0.30 threshold",
+      "rhythm": "setup",
+      "rhythmNote": "Andy and Red are placed in the same frame before either of them matters to the scene — the friendship is established while the plot runs overhead."
+    },
+    {
+      "id": "S08",
+      "start": 59.77,
+      "end": 65.19,
+      "seconds": 5.42,
+      "motion": 3.5,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3",
+        "P4"
+      ],
+      "frame": "Hadley and a young guard trade lines at the brick wall, the guard’s cap brim cutting into the left edge of the frame.",
+      "onscreenText": "",
+      "audio": "Guard: \"Yeah, maybe enough to buy a new car, and then what?\" / Hadley: \"I got to pay tax on the car. Repair...\"",
+      "note": "manual cut at 59.77",
+      "rhythm": "build",
+      "rhythmNote": "The complaint narrows from a windfall to a specific bill — each exchange makes the tax problem more concrete."
+    },
+    {
+      "id": "S09",
+      "start": 65.19,
+      "end": 69.15,
+      "seconds": 3.96,
+      "motion": 8.2,
+      "size": "medium-wide",
+      "category": "reaction",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P5"
+      ],
+      "frame": "Past the back of a convict’s flat cap, the black mirror of fresh pitch fills the roof and two men work small in the middle distance.",
+      "onscreenText": "",
+      "audio": "Hadley (off-screen): \"...maintenance, kids pestering you to take them for a ride all the time.\"",
+      "rhythm": "breath",
+      "rhythmNote": "A held moment over the roof with the argument pushed off-screen — the scene lets the complaint run down before anyone acts on it."
+    },
+    {
+      "id": "S10",
+      "start": 69.15,
+      "end": 75.41,
+      "seconds": 6.26,
+      "motion": 2.2,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3",
+        "P4"
+      ],
+      "frame": "Three peaked caps stacked in profile against the brick, Hadley on the right doing the complaining, nobody moving much.",
+      "onscreenText": "",
+      "audio": "Guard: \"Then if you figure your tax wrong, you pay out of your own pocket.\" / Hadley: \"I tell you! Uncle Sam!\"",
+      "rhythm": "build",
+      "rhythmNote": "The guards talk themselves into a corner out loud — by the end of the shot the problem has a name and no solution."
+    },
+    {
+      "id": "S11",
+      "start": 75.41,
+      "end": 84.46,
+      "seconds": 9.05,
+      "motion": 13.7,
+      "size": "medium",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P2",
+        "P5"
+      ],
+      "frame": "Red talks with both hands among the crew, a man in an undershirt at his elbow, the whole group drifting while the framing keeps them centred.",
+      "onscreenText": "",
+      "audio": "Red: \"He puts his hand in your shirt and squeezes your tit till it’s purple.\" / Convict: \"Getting himself killed.\" \"Keep tarring.\"",
+      "rhythm": "build",
+      "rhythmNote": "The convicts’ side of the roof gets its own argument going, so both halves of the scene are loaded before they collide."
+    },
+    {
+      "id": "S12",
+      "start": 84.46,
+      "end": 88.71,
+      "seconds": 4.25,
+      "motion": 4.6,
+      "size": "wide",
+      "category": "subject",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3",
+        "P4",
+        "P5"
+      ],
+      "frame": "Wide on the roof: Hadley plants himself with folded arms in the middle of his guards while convicts keep working on past them.",
+      "onscreenText": "",
+      "audio": "Convict (off-screen): \"Some brother. Shit!\"",
+      "rhythm": "setup",
+      "rhythmNote": "The geography gets stated once — guards clustered at the wall, prisoners spread across the tar, and the distance between them."
+    },
+    {
+      "id": "S13",
+      "start": 88.71,
+      "end": 90.34,
+      "seconds": 1.63,
+      "motion": 11.25,
+      "size": "medium",
+      "category": "reaction",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P2",
+        "P5"
+      ],
+      "frame": "A knot of convicts crowds the frame, Red at the left with a cigarette, every one of them looking off toward the guards.",
       "onscreenText": "",
       "audio": "",
       "rhythm": "beat",
-      "rhythmNote": "The phone fills the frame with the camera app open — the product finally lands"
+      "rhythmNote": "A second and a half of faces turned the same direction — the crew is now openly watching, and that makes what Andy does next dangerous."
     },
     {
-      "id": "S04",
-      "start": 20.08,
-      "end": 25,
-      "seconds": 4.92,
-      "motion": 4.7,
+      "id": "S14",
+      "start": 90.34,
+      "end": 95.72,
+      "seconds": 5.38,
+      "motion": 2.6,
+      "size": "medium",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1"
+      ],
+      "frame": "Andy stops working and speaks straight across the roof, the crew and the wet pitch thrown out of focus behind his shoulder.",
+      "onscreenText": "",
+      "audio": "Andy: \"...do you trust your wife?\"",
+      "rhythm": "turn",
+      "rhythmNote": "The prisoner who has said nothing for ninety seconds opens his mouth and asks the head guard about his wife — the scene flips from eavesdropping to gamble."
+    },
+    {
+      "id": "S15",
+      "start": 95.72,
+      "end": 102.02,
+      "seconds": 6.3,
+      "motion": 7.85,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "push-in",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3",
+        "P4"
+      ],
+      "frame": "From behind the guards’ caps the framing closes in on Hadley turning his head, the working crew shrinking away behind him.",
+      "onscreenText": "",
+      "audio": "Hadley: \"You’ll look funnier sucking my dick with no teeth.\"",
+      "rhythm": "build",
+      "rhythmNote": "The camera moves in exactly when the threat starts, so the answer gets bigger in the frame as it gets worse."
+    },
+    {
+      "id": "S16",
+      "start": 102.02,
+      "end": 105.52,
+      "seconds": 3.5,
+      "motion": 2.3,
+      "size": "medium",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1"
+      ],
+      "frame": "Andy holds his ground in the same framing, mouth moving fast, the guards’ rifles just outside the edge of the picture.",
+      "onscreenText": "",
+      "audio": "Andy: \"What I mean is, do you think she’d go behind your back?\"",
+      "rhythm": "build",
+      "rhythmNote": "He doubles down instead of backing off — the question gets more personal while the odds get worse."
+    },
+    {
+      "id": "S17",
+      "start": 105.52,
+      "end": 108.53,
+      "seconds": 3.01,
+      "motion": 5.4,
+      "size": "close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3",
+        "P4"
+      ],
+      "frame": "Hadley in close, jaw set, two dark cap brims crossing the bottom of the frame as he makes up his mind.",
+      "onscreenText": "",
+      "audio": "Hadley: \"Step aside, Mert. This fucker’s having himself an accident.\"",
+      "rhythm": "beat",
+      "rhythmNote": "One line, delivered flat in close-up, converts an argument into a killing — the shot gives it three seconds and no music."
+    },
+    {
+      "id": "S18",
+      "start": 108.53,
+      "end": 110.11,
+      "seconds": 1.58,
+      "motion": 12.4,
+      "size": "medium",
+      "category": "subject",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P4"
+      ],
+      "frame": "Two guards clamp onto Andy at once and a rifle barrel swings in from the right edge of the frame.",
+      "onscreenText": "",
+      "audio": "Hadley (off-screen): \"Step aside, Mert. This fucker’s having himself an accident.\"",
+      "rhythm": "beat",
+      "rhythmNote": "The grab lasts a second and a half — short enough that the audience registers it as something already happening, not something being decided."
+    },
+    {
+      "id": "S19",
+      "start": 110.11,
+      "end": 111.36,
+      "seconds": 1.25,
+      "motion": 10.25,
+      "size": "medium",
+      "category": "reaction",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P2",
+        "P5"
+      ],
+      "frame": "The crew jerks upright in one movement, Red’s mouth open, a convict in an undershirt half a step forward.",
+      "onscreenText": "",
+      "audio": "Convict: \"He’ll push him off!\"",
+      "rhythm": "beat",
+      "rhythmNote": "The witnesses say out loud what is about to happen, which is cheaper and faster than showing it."
+    },
+    {
+      "id": "S20",
+      "start": 111.36,
+      "end": 112.2,
+      "seconds": 0.84,
+      "motion": 21.5,
+      "size": "medium-close",
+      "category": "subject",
+      "camera": "tracking",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P4"
+      ],
+      "frame": "Andy is hauled sideways along the brick wall in one lurch, his fist still clenched at his chest.",
+      "onscreenText": "",
+      "audio": "Andy: \"If you trust her, you can keep...\"",
+      "rhythm": "build",
+      "rhythmNote": "Under a second, and he is already talking — the deal starts before the drag has finished."
+    },
+    {
+      "id": "S21",
+      "start": 112.2,
+      "end": 113.45,
+      "seconds": 1.25,
+      "motion": 15.2,
+      "size": "wide",
+      "category": "empty",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [],
+      "frame": "The lip of the roof and the long drop to the yard below, nothing in the picture but gravel, parapet and shadow.",
+      "onscreenText": "",
+      "audio": "Andy (off-screen): \"If you trust her, you can keep...\"",
+      "rhythm": "beat",
+      "rhythmNote": "A second and a quarter of empty parapet and the drop underneath it — the stake gets shown instead of said."
+    },
+    {
+      "id": "S22",
+      "start": 113.45,
+      "end": 115.57,
+      "seconds": 2.12,
+      "motion": 32.7,
+      "size": "medium-close",
+      "category": "subject",
+      "camera": "tracking",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P3"
+      ],
+      "frame": "From behind Hadley’s shoulder, his fist twisted into Andy’s collar, the two of them swinging toward the edge together.",
+      "onscreenText": "",
+      "audio": "Andy: \"...that thirty-five thousand.\"",
+      "rhythm": "build",
+      "rhythmNote": "The highest measured movement in the excerpt sits on the two seconds where the outcome is still open."
+    },
+    {
+      "id": "S23",
+      "start": 115.57,
+      "end": 142.89,
+      "seconds": 27.32,
+      "motion": 7,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "arc",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P3"
+      ],
+      "frame": "Straight down on Andy spread flat at the roof edge, then the frame lifts with him as Hadley drags him upright and circles the two men through the whole offer.",
+      "onscreenText": "",
+      "audio": "Andy: \"If you trust her, there’s no reason you can’t keep that thirty-five thousand.\" / Hadley: \"Why should I believe you? So I can end up in here with you?\"",
+      "rhythm": "build",
+      "rhythmNote": "Twenty-seven seconds without a cut: the audience is stuck in the same unbroken take as Andy, with no edit to promise he survives it.",
+      "note": "longest take in the first half — 27.32s, one continuous handheld move from overhead at the edge up into a standing two-shot"
+    },
+    {
+      "id": "S24",
+      "start": 142.89,
+      "end": 148.57,
+      "seconds": 5.68,
+      "motion": 3.6,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P3"
+      ],
+      "frame": "Andy talks fast with Hadley’s fist still in his collar, the cell block and the field flat behind the two heads.",
+      "onscreenText": "",
+      "audio": "Andy: \"It’s legal. Ask the IRS. They’ll say the same thing.\" ... \"I feel stupid telling you this. I’m sure you would have investigated.\"",
+      "rhythm": "build",
+      "rhythmNote": "He keeps adding detail — the IRS, the forms — because every extra fact makes him more useful alive."
+    },
+    {
+      "id": "S25",
+      "start": 148.57,
+      "end": 150.61,
+      "seconds": 2.04,
+      "motion": 0.7,
+      "size": "wide",
+      "category": "reaction",
+      "camera": "static",
+      "transitionIn": "cut",
+      "subjects": [
+        "P5"
+      ],
+      "frame": "The whole crew stands frozen in a line along the roof with mops and rakes still in their hands, watching.",
+      "onscreenText": "",
+      "audio": "Hadley (off-screen): \"I don’t need you to tell me where the bear shit in the buckwheat.\"",
+      "rhythm": "breath",
+      "rhythmNote": "The only shot in the confrontation where nothing moves — a row of men holding still lets the previous forty seconds land."
+    },
+    {
+      "id": "S26",
+      "start": 150.61,
+      "end": 157.82,
+      "seconds": 7.21,
+      "motion": 3.5,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P3"
+      ],
+      "frame": "Back at the wall the grip loosens a little while Andy keeps talking about forms and filing dates.",
+      "onscreenText": "",
+      "audio": "Hadley: \"What’d it cost you? A lawyer.\"",
+      "rhythm": "build",
+      "rhythmNote": "The question changes from whether to believe him to what it costs — the negotiation has quietly started."
+    },
+    {
+      "id": "S27",
+      "start": 157.82,
+      "end": 160.24,
+      "seconds": 2.42,
+      "motion": 2.3,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3"
+      ],
+      "frame": "Over a convict’s cap, Hadley in profile spits out his opinion of lawyers, other guards small behind him.",
+      "onscreenText": "",
+      "audio": "Hadley: \"A bunch of ball-washing bastards!\"",
+      "rhythm": "beat",
+      "rhythmNote": "A single insult, and the man who was about to throw someone off a roof is suddenly just complaining about professionals."
+    },
+    {
+      "id": "S28",
+      "start": 160.24,
+      "end": 166.54,
+      "seconds": 6.3,
+      "motion": 3.9,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P3"
+      ],
+      "frame": "Andy makes the offer with his collar still bunched in the guard’s hand, eyes level, not blinking.",
+      "onscreenText": "",
+      "audio": "Andy: \"I suppose I could set it up for you. That would save you some money.\" ... \"You get the forms. I’ll prepare them...\"",
+      "rhythm": "build",
+      "rhythmNote": "The offer is made in the position of maximum weakness, which is what makes it worth anything."
+    },
+    {
+      "id": "S29",
+      "start": 166.54,
+      "end": 169.5,
+      "seconds": 2.96,
+      "motion": 3.1,
+      "size": "medium-close",
+      "category": "reaction",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3"
+      ],
+      "frame": "Hadley listens without answering, the convict’s cap still blocking the lower left corner of the picture.",
+      "onscreenText": "",
+      "audio": "Andy (off-screen): \"...nearly free of charge.\"",
+      "rhythm": "build",
+      "rhythmNote": "Three seconds of a guard not saying no — the silence is the first sign the deal will hold."
+    },
+    {
+      "id": "S30",
+      "start": 169.5,
+      "end": 172.96,
+      "seconds": 3.46,
+      "motion": 3.3,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P3"
+      ],
+      "frame": "Andy names his price — three beers a man — while the guard’s forearm stays across his chest.",
+      "onscreenText": "",
+      "audio": "Andy: \"I’d only ask three beers apiece for each of my coworkers.\"",
+      "rhythm": "build",
+      "rhythmNote": "The price is absurdly small and asked for other people, which is the whole point of the scene."
+    },
+    {
+      "id": "S31",
+      "start": 172.96,
+      "end": 175.47,
+      "seconds": 2.51,
+      "motion": 2.2,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P3"
+      ],
+      "frame": "Hadley repeats the word back with his lip curled, half amused for the first time on this roof.",
+      "onscreenText": "",
+      "audio": "Hadley: \"‘Coworkers.’ That’s rich!\"",
+      "rhythm": "beat",
+      "rhythmNote": "The first laugh in four minutes, and it comes from the man holding the collar — the threat is over."
+    },
+    {
+      "id": "S32",
+      "start": 175.47,
+      "end": 183.93,
+      "seconds": 8.46,
+      "motion": 2.95,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P3"
+      ],
+      "frame": "Andy explains why a man working outdoors wants a beer and finishes the sentence with a quiet \"sir\".",
+      "onscreenText": "",
+      "audio": "Andy: \"A man working outdoors feels more like a man if he can have a bottle of suds. That’s only my opinion... sir.\"",
+      "rhythm": "build",
+      "rhythmNote": "Eight seconds of reasoning delivered politely by a man who was over the edge thirty seconds ago."
+    },
+    {
+      "id": "S33",
+      "start": 183.93,
+      "end": 186.19,
+      "seconds": 2.26,
+      "motion": 1.15,
+      "size": "medium",
+      "category": "reaction",
+      "camera": "static",
+      "transitionIn": "cut",
+      "subjects": [
+        "P2",
+        "P5"
+      ],
+      "frame": "Red and the men around him hold still with their tools down, waiting to see what the captain does.",
+      "onscreenText": "",
+      "audio": "",
+      "rhythm": "breath",
+      "rhythmNote": "The crew is used as the audience’s stand-in: they do not know how this ends either."
+    },
+    {
+      "id": "S34",
+      "start": 186.19,
+      "end": 188.94,
+      "seconds": 2.75,
+      "motion": 7.5,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P3"
+      ],
+      "frame": "The captain swings his head round to bark at the watching crew, Andy pinned in profile beside him.",
+      "onscreenText": "",
+      "audio": "Hadley: \"What are you jimmies staring at?\"",
+      "rhythm": "beat",
+      "rhythmNote": "The shout is aimed away from Andy for the first time — the danger gets redirected instead of resolved."
+    },
+    {
+      "id": "S35",
+      "start": 188.94,
+      "end": 192.03,
+      "seconds": 3.09,
+      "motion": 19.9,
+      "size": "medium-wide",
+      "category": "reaction",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P5"
+      ],
+      "frame": "The crew breaks apart and bends back down to the pitch in one movement, caps dropping out of frame.",
+      "onscreenText": "",
+      "audio": "",
+      "rhythm": "breath",
+      "rhythmNote": "Everyone goes back to work at once, which tells the audience the crisis is over without a line of dialogue."
+    },
+    {
+      "id": "S36",
+      "start": 192.03,
+      "end": 200.37,
+      "seconds": 8.34,
+      "motion": 9.3,
       "size": "medium-close",
       "category": "subject",
       "camera": "handheld",
       "transitionIn": "cut",
       "subjects": [
         "P1",
-        "P2"
+        "P3"
       ],
-      "frame": "Across the glass counter the assistant's hand slides a boxed phone toward her, price cards and display units lined up beside it",
-      "onscreenText": "iPhone",
+      "frame": "The guard lets go and steps back out of frame, leaving Andy alone at the wall with his collar still rucked up.",
+      "onscreenText": "",
       "audio": "",
-      "rhythm": "payoff",
-      "rhythmNote": "The boxed phone slides across the counter into her hands: the walk gets its result"
+      "rhythm": "build",
+      "rhythmNote": "The release is played without a reaction shot — Andy just stands there, and the eight seconds make the audience wait for the result."
     },
     {
-      "id": "S05",
-      "start": 25,
-      "end": 30.14,
-      "seconds": 5.14,
-      "motion": 22.3,
-      "size": "medium-wide",
+      "id": "S37",
+      "start": 200.37,
+      "end": 247.29,
+      "seconds": 46.92,
+      "motion": 8.4,
+      "size": "medium",
       "category": "subject",
       "camera": "tracking",
       "transitionIn": "cut",
       "subjects": [
+        "P2",
+        "P3",
+        "P5"
+      ],
+      "frame": "Sunset on the roof: the frame glides the whole length of the crew as one man after another drinks his beer, past the guards on the parapet and on to Red in the foreground.",
+      "onscreenText": "",
+      "audio": "Red (voice-over): \"And that’s how it came to pass that on the second-to-last day of the job, the convict crew that tarred the factory roof in the spring of ’49 wound up sitting in a row at ten o’clock in the morning, drinking icy-cold beer, courtesy of the hardest screw that ever walked a turn at Shawshank State Prison.\" / Hadley: \"Drink up while it’s cold, ladies.\"",
+      "rhythm": "payoff",
+      "rhythmNote": "The whole scene cashes out in one forty-seven-second move: no cut, just beer passing down the line until the camera lands on Red.",
+      "note": "longest take in the excerpt — 46.92s with no cut; scene scores never break 1.5 inside it because the sepia sunset grade flattens every frame difference, so it reads as one shot to the detector and is one shot in fact"
+    },
+    {
+      "id": "S38",
+      "start": 247.29,
+      "end": 251.75,
+      "seconds": 4.46,
+      "motion": 0.6,
+      "size": "medium-close",
+      "category": "subject",
+      "camera": "static",
+      "transitionIn": "cut",
+      "subjects": [
         "P1"
       ],
-      "frame": "She steps out of the shop doorway holding the box against her bag and walks off down the sloping street, traffic light ahead",
+      "frame": "Andy sits apart with his arms folded over a roll of roofing felt, a small private smile on his face.",
+      "onscreenText": "",
+      "audio": "Red (voice-over): \"...he spent that break hunkered in the shade, a strange little smile on his face...\"",
+      "rhythm": "beat",
+      "rhythmNote": "The man who bought the beer is the only one not drinking it — the shot points at that and says nothing else."
+    },
+    {
+      "id": "S39",
+      "start": 251.75,
+      "end": 258.09,
+      "seconds": 6.34,
+      "motion": 12.05,
+      "size": "medium-wide",
+      "category": "subject",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P2",
+        "P5"
+      ],
+      "frame": "The men sprawl around a tar barrel with bottles in their fists, laughing, an arm swinging a beer through the foreground.",
+      "onscreenText": "",
+      "audio": "Red (voice-over): \"...watching us drink his beer.\"",
+      "rhythm": "payoff",
+      "rhythmNote": "What the deal actually bought is shown as noise and laughter — the reward is the crew, not the drink."
+    },
+    {
+      "id": "S40",
+      "start": 258.09,
+      "end": 263.6,
+      "seconds": 5.51,
+      "motion": 2.65,
+      "size": "wide",
+      "category": "subject",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P5"
+      ],
+      "frame": "Wide and low: a convict crosses the empty roof toward Andy, who sits alone at the far end against the pale sky.",
+      "onscreenText": "",
+      "audio": "Convict: \"Wanna cold one?\"",
+      "rhythm": "build",
+      "rhythmNote": "The distance between the seated man and everyone else is drawn in one wide frame before the line is even spoken."
+    },
+    {
+      "id": "S41",
+      "start": 263.6,
+      "end": 267.18,
+      "seconds": 3.58,
+      "motion": 2.05,
+      "size": "medium-close",
+      "category": "dialogue",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1"
+      ],
+      "frame": "Andy turns his head over his folded arms and refuses the bottle without moving the rest of him.",
+      "onscreenText": "",
+      "audio": "Andy: \"No, thanks. I gave up drinking.\"",
+      "rhythm": "beat",
+      "rhythmNote": "He turns down the only thing he won, and the flatness of the delivery is what makes it land."
+    },
+    {
+      "id": "S42",
+      "start": 267.18,
+      "end": 269.52,
+      "seconds": 2.34,
+      "motion": 5.8,
+      "size": "close",
+      "category": "reaction",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P5"
+      ],
+      "frame": "A convict in a white undershirt looks back at Andy against a blank pale sky, working out what he just heard.",
       "onscreenText": "",
       "audio": "",
+      "rhythm": "beat",
+      "rhythmNote": "Two seconds of someone else being puzzled does the explaining, so the film never has to state the motive."
+    },
+    {
+      "id": "S43",
+      "start": 269.52,
+      "end": 274.23,
+      "seconds": 4.71,
+      "motion": 2.95,
+      "size": "wide",
+      "category": "subject",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1",
+        "P5"
+      ],
+      "frame": "Wide again: the other man stands drinking against the sunset while Andy stays sitting at the low wall, the width of the roof between them.",
+      "onscreenText": "",
+      "audio": "Red (voice-over): \"You could argue he did it to curry favor with the guards.\"",
+      "rhythm": "breath",
+      "rhythmNote": "A held wide with almost no movement gives the narration room to offer a motive the picture quietly contradicts."
+    },
+    {
+      "id": "S44",
+      "start": 274.23,
+      "end": 277.07,
+      "seconds": 2.84,
+      "motion": 0.35,
+      "size": "close",
+      "category": "subject",
+      "camera": "static",
+      "transitionIn": "cut",
+      "subjects": [
+        "P2"
+      ],
+      "frame": "Red in close against the low sun, turning the thought over before he offers a second explanation.",
+      "onscreenText": "",
+      "audio": "Red (voice-over): \"Or maybe make a few friends among us cons.\"",
+      "rhythm": "build",
+      "rhythmNote": "The narrator proposes reasons one at a time, and each one being wrong is what builds to the last line."
+    },
+    {
+      "id": "S45",
+      "start": 277.07,
+      "end": 279.28,
+      "seconds": 2.21,
+      "motion": 0.5,
+      "size": "medium-close",
+      "category": "reaction",
+      "camera": "static",
+      "transitionIn": "cut",
+      "subjects": [
+        "P1"
+      ],
+      "frame": "Back to Andy over the roll of felt, the smile a little wider now, the roof behind him emptied of guards.",
+      "onscreenText": "",
+      "audio": "",
+      "rhythm": "beat",
+      "rhythmNote": "Cutting to the smile under the wrong explanation is the joke: the audience gets there before the narrator does."
+    },
+    {
+      "id": "S46",
+      "start": 279.28,
+      "end": 287.37,
+      "seconds": 8.09,
+      "motion": 5.6,
+      "size": "close",
+      "category": "subject",
+      "camera": "handheld",
+      "transitionIn": "cut",
+      "subjects": [
+        "P2"
+      ],
+      "frame": "Red delivers the last line almost to camera and then lifts the bottle to his mouth, the sun going down behind the wall.",
+      "onscreenText": "",
+      "audio": "Red (voice-over): \"Me, I think he did it just to feel normal again, if only for a short while.\"",
       "rhythm": "close",
-      "rhythmNote": "She leaves with the box down the sloping street, closing the errand"
+      "rhythmNote": "The answer arrives as an aside, and the shot ends on the narrator drinking — the point is made and then dropped."
     }
   ]
 }

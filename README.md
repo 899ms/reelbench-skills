@@ -36,7 +36,9 @@ cd reelbench-skills
 
 `demo-report/` 是拿 `demo-video.mp4`（202.9 秒的 AI 短片《啥是AI》）真跑出来的**完整产物**：
 53 镜、平均镜长 3.83 秒、每分钟 15.7 切、15 道质量门全绿。
-`demo-report-en/` 是同一套流程跑一条 30 秒英文广告片的产物（`--lang en`，报告全英文）。
+`demo-report-en/` 是同一套流程跑一段 287.4 秒的英文片段（`--lang en`，报告全英文）：
+46 镜、平均镜长 6.25 秒、最长的一镜 46.92 秒——场景检测在那一段里一刀都没落，
+因为它真的是一条不切的长镜头。
 
 [![拉片报告](skills/video-shots/assets/report.png)](demo-report/shots-report.html)
 
@@ -59,7 +61,8 @@ demo-report/
 
 ## 成片长这样
 
-30 秒英文广告片 + 5 镜分镜信息，1280×1296。镜头切了信息跟着切，列表往上滚、高亮跟着滑：
+287.4 秒的英文片段 + 46 镜分镜信息，1280×1296（原片 640×360，`--scale 2` 放大）。
+镜头切了信息跟着切，列表往上滚、高亮跟着滑：
 
 <video src="https://github.com/eternityspring/reelbench-skills/raw/main/demo-sync/demo-en-sync.mp4" controls muted playsinline width="760"></video>
 

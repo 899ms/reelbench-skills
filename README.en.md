@@ -39,7 +39,8 @@ each skill is self-contained.
 `demo-report/` is the **real output** of running the skill on `demo-video.mp4`
 (a 202.9-second AI-generated short film, *啥是AI*): 53 shots, 3.83 s average shot length,
 15.7 cuts per minute, all 15 gates green. `demo-report-en/` is the same pipeline run on a
-30-second English commercial with `--lang en` — an entirely English report.
+287.4-second English excerpt with `--lang en` — an entirely English report: 46 shots, 6.25 s
+average, and one 46.92 s take that scene detection never cut, because it genuinely never cuts.
 
 [![Shot breakdown report](skills/video-shots/assets/report.png)](demo-report/shots-report.html)
 
@@ -63,8 +64,9 @@ What **video-sync** produces is at the bottom of this page — as a video, not a
 
 ## What it looks like
 
-A 30-second English commercial with its 5-shot breakdown, 1280×1296. The panel switches with every
-cut; the list scrolls up and the highlight rides along:
+A 287.4-second English excerpt with its 46-shot breakdown, 1280×1296 (the source is 640×360,
+blown up with `--scale 2`). The panel switches with every cut; the list scrolls up and the
+highlight rides along:
 
 <video src="https://github.com/eternityspring/reelbench-skills/raw/main/demo-sync/demo-en-sync.mp4" controls muted playsinline width="760"></video>
 
