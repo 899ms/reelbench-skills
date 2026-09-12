@@ -93,12 +93,16 @@
 .panel .rinfo{display:flex;flex-direction:column;gap:0.12rem;min-width:0;padding-top:1.3rem}
 .panel .rtime{font-size:0.8rem;color:var(--mute);line-height:1.35}
 .panel .rtime i{font-style:normal;color:#c3ccb6;margin-left:0.35rem}
+/* 景别 · 运镜：**让它换行，不要截断**。中文词短（「中近景 · 手持微晃」）怎么排都够，
+   英文词长（"medium close · handheld"）一截就变成 "hand"，等于把这一格的信息扔了。 */
 .panel .rtags{
-  display:flex;align-items:center;gap:0.28rem;
   font-size:0.86rem;color:#bcc6ad;line-height:1.35;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  overflow-wrap:break-word;
 }
-.panel .dot{width:0.46rem;height:0.46rem;border-radius:50%;flex-shrink:0}
+.panel .dot{
+  display:inline-block;width:0.46rem;height:0.46rem;border-radius:50%;
+  margin-right:0.28rem;flex-shrink:0;
+}
 
 /* 画面描述与节奏分析**不截断**：内容多就把行撑高，行高由内容决定
    （合成端按量到的每行高度分层画高亮条，所以这里可以随便长） */

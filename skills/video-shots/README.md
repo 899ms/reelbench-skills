@@ -86,7 +86,7 @@ node scripts/video-shots.mjs recut shots.json --track track.json \
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 436 项断言全部通过（15 道门每道都有击穿用例）
+# ✅ 449 项断言全部通过（15 道门每道都有击穿用例）
 ```
 
 ## 用法
@@ -115,6 +115,8 @@ node scripts/video-shots.mjs render shots.json --html --track track.json \
 ```
 
 所有命令都认 `--lang zh|en`：门的名字、违规信息、命令行输出、报告界面、四张词表全跟着切。
+`seed --lang en` 会把 `lang: "en"` 写进底稿，后面的命令不带 `--lang` 也跟着走英文——
+连 `recut` 补刀写的 `note`、英文表格里的标点都是半角的。
 **画面描述的判据跟着描述本身的语言走**——中文数字数（≥12 字），英文数词数（≥8 词），
 空话词表（「氛围感」/ "visually stunning"）和废话开头（「这个镜头…」/ "This shot…"）各一套。
 

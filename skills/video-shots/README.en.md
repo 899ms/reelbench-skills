@@ -101,7 +101,7 @@ Every gate has a **breaking test case** in the self-test, proving it really bloc
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 436 assertions passed (every one of the 15 gates has a breaking case)
+# ✅ 449 assertions passed (every one of the 15 gates has a breaking case)
 ```
 
 ## Usage
@@ -133,6 +133,10 @@ node scripts/video-shots.mjs render shots.json --html --track track.json \
 field in the JSON > Chinese): gate names, violation messages, CLI output, the report UI and all
 four vocabularies switch together. It switches **labels only** — descriptions, dialogue and names
 written by the model are left exactly as they are.
+
+`seed --lang en` records `lang: "en"` in the working draft, so every later command follows English
+without repeating the flag — down to the `note` that `recut` writes when it adds a cut, and the
+punctuation in the English tables.
 
 The frame-description gate follows **the language of the description itself**, not the UI
 language: Chinese is counted in characters (≥ 12), English in words (≥ 8), and each has its own

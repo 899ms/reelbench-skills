@@ -73,6 +73,16 @@ const doc = () => ({
   eq(plan({ width: 1920, height: 1080 }, { panelRatioWide: 0.5 }).panel.height, 540, '横版面板比例可调');
   eq(plan({ width: 1080, height: 1920 }, { panelRatioTall: 1 }).panel.width, 608, '竖版面板比例可调');
   eq(plan({ width: 1920, height: 1080 }, { maxVideoWidth: 1280 }).video.width, 1280, '画面宽上限可调');
+  // --scale：默认只缩不放，给了倍数才放大，宽高比一分不动，上限照样夹
+  eq(plan({ width: 640, height: 360 }).video.width, 640, '默认不放大小素材');
+  const up = plan({ width: 640, height: 360 }, { videoScale: 2 });
+  eq(up.video.width, 1280, '--scale 2 把画面区放到两倍');
+  eq(up.video.height, 720, '放大后宽高比不变');
+  eq(up.panel.height, 576, '面板跟着画面区一起变大');
+  eq(up.output.height, 1296, '输出尺寸跟着走');
+  eq(plan({ width: 640, height: 360 }, { videoScale: 10 }).video.width, 1920, '放大也不许越过 --width 上限');
+  eq(plan({ width: 202, height: 360 }, { videoScale: 2 }).video.height, 720, '竖版按高放大');
+  eq(plan({ width: 640, height: 360 }, { videoScale: 0 }).video.width, 640, '--scale 0 当没给（不能把画面缩没）');
   eq(paramsOf({ syncParams: { fps: 24 } }).fps, 24, 'syncParams 能覆盖默认值');
   eq(paramsOf({}).crf, DEFAULT_PARAMS.crf, '没覆盖就用默认值');
 
@@ -175,6 +185,19 @@ const doc = () => ({
   eq(mixed.bands[0], 110, '层按高度从小到大');
   ok(mixed.commands.some((c) => c.target === 'overlay@band1' && c.arg === String(mixed.parkY)),
     '没轮到的那层停到画面外');
+
+  // 停车位必须在**整块面板**之外：视窗底下还有进度条，只躲开视窗会露出一截（踩过）
+  const parked = motionPlan({
+    shots: [{ id: 'A', start: 0, end: 4 }, { id: 'B', start: 4, end: 8 }],
+    rows: [{ id: 'A', top: 0, height: 140 }, { id: 'B', top: 150, height: 255 }],
+    view: { x: 27, y: 74, width: 1227, height: 455 }, content: 8994, panelHeight: 576,
+  });
+  ok(parked.parkY >= 576, '给了面板高度就停到面板外（视窗底才 529，停那儿会露在进度条上）');
+  ok(motionPlan({
+    shots: [{ id: 'A', start: 0, end: 4 }, { id: 'B', start: 4, end: 8 }],
+    rows: [{ id: 'A', top: 0, height: 140 }, { id: 'B', top: 150, height: 255 }],
+    view: { x: 27, y: 74, width: 1227, height: 455 }, content: 8994,
+  }).parkY >= 74 + 455 + 255, '没给面板高度也要躲开「视窗底 + 最高的一行」');
   eq(mixed.commands.find((c) => c.target === 'overlay@band0' && c.time === 4.45)?.arg, String(mixed.parkY),
     '上一镜那层晚一个缓动才停——让它陪着滑完这一程，不在切点上凭空消失');
 
@@ -221,6 +244,12 @@ const doc = () => ({
   ok(filter.includes('scale=1920:864'), '底板按面板尺寸缩');
   ok(filter.includes(`crop@win=w=${view.width}:h=${view.height}`), '暗底长图按列表视窗裁');
   ok(filter.includes(`crop@band0=w=${view.width}:h=${motion.bands[0]}`), '亮条长图只裁一行高');
+  // 裁的横向位置必须和盖回去的位置一致，否则整张表右移一个缩进、右边的字被切掉（踩过）
+  ok(filter.includes(`crop@win=w=${view.width}:h=${view.height}:x=${view.x}:`),
+    '暗底长图从 view.x 裁起——长图是整块面板宽的，列表在里面是缩进的');
+  ok(filter.includes(`crop@band0=w=${view.width}:h=${motion.bands[0]}:x=${view.x}:`),
+    '亮条长图也从 view.x 裁起');
+  ok(filter.includes(`overlay@win=x=${view.x}:`), '裁的 x 和盖的 x 是同一个值');
   ok(filter.includes('overlay@band0='), '高亮条按行高分层，层号从 0 起');
   ok(filter.includes("sendcmd=f='/tmp/motion.cmd'"), '动画由 sendcmd 驱动');
   ok(filter.includes('crop@win=') && filter.includes('crop@band0=') && filter.includes('overlay@band0='),

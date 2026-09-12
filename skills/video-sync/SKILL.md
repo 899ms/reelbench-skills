@@ -94,6 +94,10 @@ node {baseDir}/scripts/video-sync.mjs plan shots.json --video <片>
 不满意就调：`--panel <比例>`（横版是面板高÷画面高，默认 0.8；竖版是面板宽÷画面宽，默认 1.6）、
 `--width` / `--height`（画面区的上限，默认 1920 / 1080）。
 
+**原片太小就放大画面区**：面板是跟着画面区算的，640×360 的片子面板只有 640×288，
+四列挤在一起读不了。`--scale 2` 把画面区放到 1280×720、面板放到 1280×576，宽高比不动。
+默认是 1（只缩不放）。`plan` / `panels` / `compose` / `export` 都要带上同一个 `--scale`。
+
 ### Step 2 — 渲面板
 
 ```bash
@@ -154,7 +158,7 @@ for t in 5 30 60; do ffmpeg -v error -y -ss $t -i out.mp4 -frames:v 1 -q:v 3 /tm
 node {baseDir}/scripts/selftest.mjs
 ```
 
-106 项断言，不碰 ffmpeg、不开浏览器：几何（横/方/竖、偶数边长、上下限、旋钮）、
+122 项断言，不碰 ffmpeg、不开浏览器：几何（横/方/竖、偶数边长、上下限、旋钮）、
 面板页面的数据契约（词表下发、节奏角色、缩略图有没有才给、转义）、
 动画命令（每条都必须短——表达式长了 ffmpeg 直接配置失败）、ffmpeg 参数。
 改完脚本先跑这个。

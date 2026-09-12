@@ -375,6 +375,10 @@ const CTX = () => ({ track: baseTrack() });
   const withTrack = buildSeed(meta, [5], baseTrack(), {});
   ok(withTrack.shots[0].motion != null, '给了曲线就写实测运动');
 
+  eq(doc.lang, 'zh', '不给语言就是中文底稿');
+  eq(buildSeed(meta, [5], null, { lang: 'en' }).lang, 'en', 'seed --lang en 要把语言写进底稿（不写的话英文片默认按中文判画面描述长度）');
+  eq(buildSeed(meta, [5], null, { lang: 'fr' }).lang, 'zh', '只认 en，别的语言退回中文');
+
   eq(paramsOf({ params: { minShotSeconds: 1 } }).minShotSeconds, 1, 'params 能覆盖默认值');
   eq(paramsOf({}).trackHz, DEFAULT_PARAMS.trackHz, '没覆盖就用默认值');
 }
@@ -394,6 +398,11 @@ const CTX = () => ({ track: baseTrack() });
   eq(split.manualCuts.join(','), '2', '补的刀记进 manualCuts');
   ok(validate(split, CTX()).gates.find((g) => g.id === 'boundary').ok, '补完刀 boundary 门仍然通过');
   ok(split.shots[0].motion != null, '新镜头重算了实测运动');
+
+  ok(/重看画面/.test(split.shots[0].note), '中文底稿补刀，note 是中文');
+  const splitEn = recut({ ...baseDoc(), lang: 'en' }, { splits: [2] });
+  ok(/look at the frames again/.test(splitEn.shots[0].note), '英文底稿补刀，note 也要是英文（不然英文报告里混一句中文）');
+  ok(!/[\u4e00-\u9fa5]/.test(splitEn.shots[0].note), '英文 note 里一个汉字都不能有');
 
   const merged = recut(baseDoc(), { merges: [4], track: baseTrack() });
   eq(merged.shots.length, 2, '并一刀少一镜');
@@ -456,6 +465,25 @@ const cfgOf = (html) => JSON.parse(html.split('\n').find((l) => l.startsWith('co
   ok(md.includes('00:04.00'), 'Markdown 用时间码');
   ok(md.includes('全景') && md.includes('手持微晃'), 'Markdown 用中文标签');
   ok(renderMd(baseDoc(), { lang: 'en' }).includes('Shot list'), '--lang en 切英文界面');
+
+  // 英文报告里不能混中文标点：主体分隔和节奏冒号都跟着语言走
+  const enMd = renderMd({
+    ...baseDoc(),
+    lang: 'en',
+    title: 'a test clip',
+    cast: [{ id: 'P1', name: 'Granny' }, { id: 'P2', name: 'Doctor' }],
+    shots: baseDoc().shots.map((x, i) => ({
+      ...x,
+      subjects: i === 1 ? ['P1', 'P2'] : x.subjects,
+      frame: `a plain english frame description number ${i} for the gate`,
+      audio: x.audio ? 'Granny: get me the medicine' : '',
+      rhythm: 'hook',
+      rhythmNote: 'the viewer stays because the frame withholds the face',
+    })),
+  }, {});
+  ok(enMd.includes('P1, P2'), '英文报告里主体用半角逗号分隔');
+  ok(enMd.includes('hook: the viewer stays'), '英文报告里节奏用半角冒号');
+  ok(!/[、：（）「」]/.test(enMd), '英文报告里一个中文标点都不能有');
 
   // 界面语言的优先级：--lang > JSON 顶层 lang > 默认中文
   const enDoc = { ...baseDoc(), lang: 'en' };

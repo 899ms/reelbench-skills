@@ -22,8 +22,12 @@ with black bars:
 
 Both directions **scale the footage as-is — never cropped, never stretched**; the panel fills the
 rest of the canvas. Every dimension is rounded to an even number (h264 requires it) and the
-panel's short side never drops below 260px (below that the text stops fitting). Details in
-[`references/layout.md`](references/layout.md).
+panel's short side never drops below 260px (below that the text stops fitting).
+
+It **never upscales by default**. But the panel is sized off the footage, so a small source gets a
+small panel — a 640×360 clip only leaves 640×288, and four columns in that are unreadable. For
+those, `--scale 2` takes the footage area to 1280×720 and the panel to 1280×576, aspect ratio
+untouched. Details in [`references/layout.md`](references/layout.md).
 
 ## Three screenshots, and ffmpeg does the moving
 
@@ -49,9 +53,13 @@ Row height **follows the content** (a longer description makes a taller row), so
 layered by height: `crop` cannot change height at runtime, so one layer per distinct row height,
 and the ones not in use are parked off-screen.
 
-Two traps, documented in [`references/layout.md`](references/layout.md): `drawbox` evaluates its
-expressions only once at init (so it cannot animate), and a whole-film expression makes ffmpeg's
-parser fail outright at around a hundred terms — hence `sendcmd` with one short command per shot.
+Four traps, documented in [`references/layout.md`](references/layout.md): `drawbox` evaluates its
+expressions only once at init (so it cannot animate); a whole-film expression makes ffmpeg's
+parser fail outright at around a hundred terms (hence `sendcmd`, one short command per shot); the
+`x` you crop at has to be the `x` you overlay back at (otherwise the whole table shifts right by
+one indent and loses the same width off its right edge); and an unused highlight layer has to park
+outside the **whole panel**, not just outside the list viewport, or a slice of it shows over the
+progress bar.
 
 ## The layout is yours to change
 
@@ -91,7 +99,9 @@ node scripts/video-sync.mjs export shots.json --video clip.mp4 --frames frames -
 ```
 
 Knobs: `--panel <ratio>` (landscape: panel height ÷ footage height, default 0.8; portrait: panel
-width ÷ footage width, default 1.6), `--width` / `--height` (caps on the footage area), `--crf`
+width ÷ footage width, default 1.6), `--scale <factor>` (how far to blow up the footage area,
+default 1 = never upscale; this is what makes a small source's panel readable),
+`--width` / `--height` (caps on the footage area), `--crf`
 (quality), `--ease` (easing seconds at each cut), `--anchor` (which row the playing shot sits on,
 default 1 = second row), `--lang zh|en`.
 
@@ -113,7 +123,7 @@ A mismatch usually means shots.json and the film are not the same clip.
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 106 assertions passed
+# ✅ 122 assertions passed
 ```
 
 No ffmpeg, no browser. It checks: geometry (landscape/square/portrait, even dimensions, caps,
@@ -137,8 +147,9 @@ enum key.
 
 ## What it looks like
 
-A 30-second English commercial with its 5-shot breakdown, 1280×1296. The panel switches with every
-cut; the list scrolls up and the highlight rides along:
+A 287.4-second English excerpt with its 46-shot breakdown, 1280×1296 (the source is 640×360,
+blown up with `--scale 2`). The panel switches with every cut; the list scrolls up and the
+highlight rides along:
 
 <video src="https://github.com/eternityspring/reelbench-skills/raw/main/demo-sync/demo-en-sync.mp4" controls muted playsinline width="760"></video>
 

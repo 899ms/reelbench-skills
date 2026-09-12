@@ -28,6 +28,8 @@ export const DEFAULT_PARAMS = {
   panelRatioWide: 0.8,   // 横版：面板高 ÷ 画面高
   panelRatioTall: 1.6,   // 竖版：面板宽 ÷ 画面宽
   minPanelPx: 260,       // 面板最短边，再小就放不下字
+  videoScale: 1,         // 画面区相对原片的倍数。默认 1 = 只缩不放；
+                         // 640x360 这种小素材放大到 2 倍才够面板排四列
   fps: 30,               // 输出帧率
   crf: 20,               // x264 质量，越小越清晰
 };
@@ -156,13 +158,16 @@ export function plan(meta, opts = {}) {
   if (!(w > 0 && h > 0)) throw new Error('plan：原片宽高读不出来');
   const portrait = h > w;
 
+  // 先按 videoScale 放大（默认 1，也就是老行为：只缩不放），再受上限夹一次。
+  // 放大只动画面区的像素尺寸，宽高比一分不动。
+  const scale = Number(p.videoScale) > 0 ? Number(p.videoScale) : 1;
   let videoW;
   let videoH;
   if (portrait) {
-    videoH = Math.min(h, p.maxVideoHeight);
+    videoH = Math.min(h * scale, p.maxVideoHeight);
     videoW = (w / h) * videoH;
   } else {
-    videoW = Math.min(w, p.maxVideoWidth);
+    videoW = Math.min(w * scale, p.maxVideoWidth);
     videoH = (h / w) * videoW;
   }
   videoW = even(videoW);
@@ -232,7 +237,9 @@ export function commandFile(commands) {
  * 滚动只发生在切点：滚 `easeSeconds` 秒到位就**停住**，镜头再长也不动。
  * 高亮条和视窗用同一段缓动，是「一起滑过去」，不是一个跳一个滑。
  */
-export function motionPlan({ shots, rows, view, content, easeSeconds = 0.45, anchorRow = 1 }) {
+export function motionPlan({
+  shots, rows, view, content, easeSeconds = 0.45, anchorRow = 1, panelHeight = 0,
+}) {
   const byId = new Map(rows.map((r) => [r.id, r]));
   const row = (s) => byId.get(s.id) ?? { top: 0, height: 0 };
   // 锚点 = 第 anchorRow 行的行首，也就是「当前镜头该停在第几行」
@@ -248,7 +255,13 @@ export function motionPlan({ shots, rows, view, content, easeSeconds = 0.45, anc
    */
   const bands = [...new Set(rows.map((r) => r.height))].sort((a, b) => a - b);
   const bandOf = (s) => Math.max(0, bands.indexOf(row(s).height));
-  const parkY = view.y + view.height + 10; // 画面外，overlay 自己会裁掉
+  /*
+   * 停车位要在**整块面板之外**，不只是列表视窗之外——视窗底下通常还留着进度条那一条，
+   * 停在「视窗底 + 10」的话，没轮到的那层高亮条会有一截露在进度条上（踩过）。
+   * 面板高度拿不到时退回「视窗底 + 最高的一行」，那也保证整条在视窗外。
+   */
+  const tallestRow = Math.max(0, ...rows.map((r) => r.height));
+  const parkY = Math.max(panelHeight, view.y + view.height + tallestRow) + 10;
   const screenY = (s, top, offset) => {
     const hi = view.y + view.height - row(s).height;
     return `clip(${view.y}+(${top})-(${offset}),${r2(view.y)},${r2(Math.max(view.y, hi))})`;
@@ -406,8 +419,9 @@ export function probe(video) {
 
 const USAGE = `video-sync.mjs — 把拉片数据和原片合成一条视频
 
-  plan <shots.json> [--video <片>] [--panel <比例>] [--width N] [--height N]
-      只算几何：版式、画面区、面板区、输出尺寸（JSON 到 stdout），不碰视频
+  plan <shots.json> [--video <片>] [--panel <比例>] [--width N] [--height N] [--scale 倍数]
+      只算几何：版式、画面区、面板区、输出尺寸（JSON 到 stdout），不碰视频。
+      默认只缩不放；原片太小（640x360 这种）面板排不下四列，用 --scale 2 放大画面区
 
   panels <shots.json> --video <片> [--out panels] [--frames <关键帧目录>]
          [--lang zh|en] [--chrome <路径>] [--panel <比例>]
@@ -448,6 +462,8 @@ function geometryOf(rest, doc, video) {
   }
   if (typeof width === 'string') opts.maxVideoWidth = Number(width);
   if (typeof height === 'string') opts.maxVideoHeight = Number(height);
+  const scale = flag(rest, '--scale');
+  if (typeof scale === 'string') opts.videoScale = Number(scale);
   const crf = flag(rest, '--crf');
   if (typeof crf === 'string') opts.crf = Number(crf);
   return { meta, layout: plan(meta, { ...paramsOf(doc), ...opts }) };
@@ -484,10 +500,12 @@ export function composeArgs({
   const chain = [
     `[0:v]scale=${vw}:${vh}:flags=lanczos,setsar=1,fps=${layout.fps}[v]`,
     `[1:v]scale=${pw}:${ph},setsar=1,fps=${layout.fps},sendcmd=f='${commands}'[base]`,
-    `[2:v]fps=${layout.fps},crop@win=w=${view.width}:h=${view.height}:x=0:y=${initial.offset}[win]`,
+    // x 必须取 view.x：长图是整块面板宽的，列表在里面是缩进的。
+    // 从 x=0 裁再盖回 x=view.x，整张表会往右挪一个缩进，右边同样宽度的字被切掉（踩过）
+    `[2:v]fps=${layout.fps},crop@win=w=${view.width}:h=${view.height}:x=${view.x}:y=${initial.offset}[win]`,
     // 一种行高一层高亮条：crop 的高度是配置期定死的，改不动，只能分层
     `[3:v]fps=${layout.fps}${bands.length > 1 ? `,split=${bands.length}${bands.map((_, i) => `[lit${i}]`).join('')}` : '[lit0]'}`,
-    ...bands.map((h, i) => `[lit${i}]crop@band${i}=w=${view.width}:h=${h}:x=0:y=${initial.top}[band${i}]`),
+    ...bands.map((h, i) => `[lit${i}]crop@band${i}=w=${view.width}:h=${h}:x=${view.x}:y=${initial.top}[band${i}]`),
     `[base][win]overlay@win=x=${view.x}:y=${view.y}[p0]`,
     ...bands.map((h, i) => `[p${i}][band${i}]overlay@band${i}=x=${view.x}:y=${i === initial.band ? initial.screenY : parkY}[p${i + 1}]`),
     `[v][p${bands.length}]${layout.stack}=inputs=2[out]`,
@@ -588,6 +606,7 @@ function cmdCompose(rest) {
     content: measure.content,
     easeSeconds: typeof ease === 'string' ? Number(ease) : undefined,
     anchorRow: typeof anchor === 'string' ? Number(anchor) : undefined,
+    panelHeight: Number(measure.panel?.height) || layout.panel.height,
   });
   const cmdFile = join(panelDir, 'motion.cmd');
   writeFileSync(cmdFile, `${commandFile(motion.commands)}\n`);

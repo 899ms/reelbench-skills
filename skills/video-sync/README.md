@@ -18,7 +18,11 @@
 <img src="assets/output-portrait.png" width="620" alt="左右版式">
 
 两个方向都保证**画面原样缩放、不裁不拉**，面板补足剩下的画布。所有边长取偶数（h264 的要求），
-面板最短边不低于 260px（再小字就放不下）。详见 [`references/layout.md`](references/layout.md)。
+面板最短边不低于 260px（再小字就放不下）。
+
+默认**只缩不放**。但面板是跟着画面区算的，原片太小面板也跟着小——640×360 的片子面板只有
+640×288，四列谁也读不了。这种时候 `--scale 2` 把画面区放到 1280×720、面板放到 1280×576，
+宽高比一分不动。详见 [`references/layout.md`](references/layout.md)。
 
 ## 只截三张图，动的部分交给 ffmpeg
 
@@ -38,9 +42,11 @@
 行高**由内容决定**（描述长的行就高）。高亮条因此按行高分层：`crop` 的高度改不动，
 所以出现几种行高就建几层，没轮到的挪到画面外。
 
-两个踩过的坑写在 [`references/layout.md`](references/layout.md) 里：
+四个踩过的坑写在 [`references/layout.md`](references/layout.md) 里：
 `drawbox` 的表达式只在初始化时算一次（动不了）；把整片拼成一条大表达式，
-ffmpeg 的解析器在一百来项上直接配置失败——所以改用 `sendcmd`，每镜一条小命令。
+ffmpeg 的解析器在一百来项上直接配置失败（所以改用 `sendcmd`，每镜一条小命令）；
+裁窗口的 x 要和盖回去的 x 是同一个值（不然整张表右移一个缩进、右边的字被啃掉）；
+没轮到的高亮条要停到**整块面板**之外（只躲开视窗的话会露在进度条上）。
 
 ## 布局你随便改
 
@@ -78,6 +84,7 @@ node scripts/video-sync.mjs export shots.json --video clip.mp4 --frames frames -
 ```
 
 调版式：`--panel <比例>`（横版是面板高÷画面高，默认 0.8；竖版是面板宽÷画面宽，默认 1.6）、
+`--scale <倍数>`（画面区放大几倍，默认 1 = 只缩不放；小素材靠它把面板撑开）、
 `--width` / `--height`（画面区上限）、`--crf`（质量）、`--ease`（切点缓动秒数）、
 `--anchor`（当前镜头钉第几行，默认 1 = 第二行）、`--lang zh|en`。
 
@@ -98,7 +105,7 @@ for t in 5 30 60; do ffmpeg -v error -y -ss $t -i out.mp4 -frames:v 1 -q:v 3 /tm
 
 ```bash
 node scripts/selftest.mjs
-# ✅ 106 项断言全部通过
+# ✅ 122 项断言全部通过
 ```
 
 不碰 ffmpeg、不开浏览器，查的是：几何（横/方/竖、偶数边长、上下限、旋钮、读不出宽高就报错）、
@@ -118,7 +125,8 @@ video-shots  →  shots.json + frames/  →  video-sync  →  out.mp4
 
 ## 成片长这样
 
-30 秒英文广告片 + 5 镜分镜信息，1280×1296。镜头切了信息跟着切，列表往上滚、高亮跟着滑：
+287.4 秒的英文片段 + 46 镜分镜信息，1280×1296（原片 640×360，`--scale 2` 放大）。
+镜头切了信息跟着切，列表往上滚、高亮跟着滑：
 
 <video src="https://github.com/eternityspring/reelbench-skills/raw/main/demo-sync/demo-en-sync.mp4" controls muted playsinline width="760"></video>
 

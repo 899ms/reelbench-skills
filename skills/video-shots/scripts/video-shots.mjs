@@ -303,7 +303,7 @@ export function buildSeed(meta, cuts, track, opts = {}) {
   return {
     source: opts.source ?? '',
     title: opts.title ?? '',
-    lang: 'zh',
+    lang: opts.lang === 'en' ? 'en' : 'zh',
     meta,
     params: opts.params ?? {},
     seedCuts: rawCuts,
@@ -374,7 +374,7 @@ export function recut(doc, { splits = [], merges = [], track = null } = {}) {
       frame: '',
       onscreenText: '',
       audio: '',
-      note: `边界变过（原 ${from.join('+') || '—'}），标注已清空，重看画面再填`,
+      note: msgs(doc?.lang)('recutNote', from.join('+') || '—'),
     });
   }
 
@@ -455,6 +455,10 @@ export const gateLabel = (id, lang) => GATE_LABELS[lang === 'en' ? 'en' : 'zh'][
  * 中文的「第 3 个镜头」和英文的 "shot 3" 语序不一样，拼不出来。
  */
 const MSG = {
+  recutNote: {
+    zh: (from) => `边界变过（原 ${from}），标注已清空，重看画面再填`,
+    en: (from) => `boundary changed (was ${from}); annotations cleared — look at the frames again`,
+  },
   noShots: { zh: () => '没有任何镜头', en: () => 'there are no shots at all' },
   notNumber: { zh: (id) => `${id}：start/end 不是数字`, en: (id) => `${id}: start/end is not a number` },
   endBeforeStart: {
@@ -538,8 +542,8 @@ const MSG = {
     en: (id) => `${id}: category is "reaction" but nobody is reacting (subjects is empty)`,
   },
   needEmpty: {
-    zh: (id, who) => `${id}：类别是「空镜」却写了主体 ${who}`,
-    en: (id, who) => `${id}: category is "empty" but subjects lists ${who}`,
+    zh: (id, who) => `${id}：类别是「空镜」却写了主体 ${[].concat(who).join('、')}`,
+    en: (id, who) => `${id}: category is "empty" but subjects lists ${[].concat(who).join(', ')}`,
   },
   motionTooStill: {
     zh: (id, move, m, max) => `${id}：写的是「${move}」，实测帧间变化只有 ${m}（< ${max}）——这一镜画面没动，重看一遍`,
@@ -650,7 +654,9 @@ const gate = (id, lang, issues, skipped = null) => ({
 });
 
 export function validate(doc, ctx = {}) {
-  const lang = ctx.lang === 'en' ? 'en' : 'zh';
+  // 语言优先级和报告一致：--lang > JSON 顶层 lang > 默认中文。
+  // 门的名字、违规信息、跳过理由都吃这一个值，否则英文报告里会混一段中文。
+  const lang = (ctx.lang ?? doc?.lang) === 'en' ? 'en' : 'zh';
   const M = msgs(lang);
   const p = paramsOf(doc);
   const shots = doc?.shots ?? [];
@@ -796,7 +802,7 @@ export function validate(doc, ctx = {}) {
       if (need === 'audio' && !String(s.audio ?? '').trim()) bad.push(M('needAudio', s.id));
       if (need === 'onscreenText' && !String(s.onscreenText ?? '').trim()) bad.push(M('needText', s.id));
       if (need === 'subjects' && !subs.length) bad.push(M('needSubject', s.id));
-      if (need === 'no-subjects' && subs.length) bad.push(M('needEmpty', s.id, subs.join('、')));
+      if (need === 'no-subjects' && subs.length) bad.push(M('needEmpty', s.id, subs));
     }
     gates.push(gate('category-evidence', lang, bad));
   }
@@ -937,7 +943,7 @@ const I18N = {
     frame: '画面', subjects: '主体', text: '画面文字', audio: '声音', motion: '实测运动',
     transition: '转场', note: '备注', copy: '复制', copied: '已复制', export: '导出 JSON',
     sec: '秒', shotsUnit: '镜', missing: '未生成', pass: '通过', fail: '未通过', skip: '跳过',
-    hints: '提示（不拦）', sound: '有声', mute: '无声', colon: '：', sep: '　', counts: '片数 · 占时',
+    hints: '提示（不拦）', sound: '有声', mute: '无声', colon: '：', sep: '　', listSep: '、', counts: '片数 · 占时',
     no: '镜号', keyframes: '关键帧', span: '时间', say: '文字 · 声音', motionShort: '实测',
     rhythm: '节奏', rhythmTitle: '节奏角色', rhythmSub: '观众为什么还没划走',
     scrollHint: '窄屏自动拆成逐镜卡片，每格都带字段名',
@@ -977,7 +983,7 @@ const I18N = {
     frame: 'Frame', subjects: 'Subjects', text: 'On-screen text', audio: 'Audio', motion: 'Measured motion',
     transition: 'Transition', note: 'Note', copy: 'Copy', copied: 'Copied', export: 'Export JSON',
     sec: 's', shotsUnit: '', missing: 'not generated', pass: 'pass', fail: 'fail', skip: 'skipped',
-    hints: 'Hints (not blocking)', sound: 'with audio', mute: 'silent', colon: ': ', sep: '   ', counts: 'shots · share',
+    hints: 'Hints (not blocking)', sound: 'with audio', mute: 'silent', colon: ': ', sep: '   ', listSep: ', ', counts: 'shots · share',
     no: 'No.', keyframes: 'Keyframes', span: 'Time', say: 'Text · Audio', motionShort: 'measured',
     rhythm: 'Rhythm', rhythmTitle: 'Rhythm role', rhythmSub: 'why the viewer has not swiped away',
     scrollHint: 'stacks into labelled cards on narrow screens',
@@ -1044,11 +1050,11 @@ export function renderMd(doc, ctx = {}) {
   out.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const s of doc.shots ?? []) {
     const cell = (x) => String(x ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
-    out.push(`| ${s.id} | ${fmtTime(s.start)}—${fmtTime(s.end)} | ${s.seconds} | ${labelOf(SHOT_SIZES, s.size, lang)} | ${labelOf(SHOT_CATEGORIES, s.category, lang)} | ${labelOf(CAMERA_MOVES, s.camera, lang)} | ${cell(s.frame)} | ${cell(s.rhythm ? `${labelOf(RHYTHM_ROLES, s.rhythm, lang)}：${s.rhythmNote ?? ''}` : '')} | ${cell((s.subjects ?? []).join('、'))} | ${cell(s.onscreenText)} | ${cell(s.audio)} |`);
+    out.push(`| ${s.id} | ${fmtTime(s.start)}—${fmtTime(s.end)} | ${s.seconds} | ${labelOf(SHOT_SIZES, s.size, lang)} | ${labelOf(SHOT_CATEGORIES, s.category, lang)} | ${labelOf(CAMERA_MOVES, s.camera, lang)} | ${cell(s.frame)} | ${cell(s.rhythm ? `${labelOf(RHYTHM_ROLES, s.rhythm, lang)}${t.colon}${s.rhythmNote ?? ''}` : '')} | ${cell((s.subjects ?? []).join(t.listSep))} | ${cell(s.onscreenText)} | ${cell(s.audio)} |`);
   }
   out.push('', `## ${t.gates}`, '');
   for (const g of v.gates) {
-    out.push(`- ${g.skipped ? '⊘' : g.ok ? '✅' : '❌'} **${g.label}**${g.skipped ? `（${g.skipped}）` : ''}`);
+    out.push(`- ${g.skipped ? '⊘' : g.ok ? '✅' : '❌'} **${g.label}**${g.skipped ? paren(g.skipped) : ''}`);
     for (const issue of g.issues) out.push(`  - ${issue}`);
   }
   if (v.hints.length) {
@@ -1413,6 +1419,7 @@ function cmdSeed(rest) {
   const doc = buildSeed(meta, cuts, track, {
     source: basename(video),
     title: typeof flag(rest, '--title') === 'string' ? flag(rest, '--title') : '',
+    lang: flag(rest, '--lang') === 'en' ? 'en' : 'zh',
     params: { sceneThreshold: threshold, minShotSeconds },
   });
   const trackOut = flag(rest, '--track');
