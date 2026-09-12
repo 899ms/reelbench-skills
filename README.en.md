@@ -7,7 +7,7 @@ Claude Code / Codex skills for working with video.
 
 | skill | what it does |
 | --- | --- |
-| [video-shots](skills/video-shots/README.en.md) | **Shot breakdown**: turns a finished film into a shot-by-shot table — duration, shot size, category, camera move, frame description. Cuts and durations are measured by ffmpeg; the model only judges the four things it should; 14 quality gates check every call. |
+| [video-shots](skills/video-shots/README.en.md) | **Shot breakdown**: turns a finished film into a shot-by-shot table — duration, shot size, category, camera move, frame description, rhythm role. Cuts and durations are measured by ffmpeg; the model only judges what it should; 15 quality gates check every call. |
 | [video-sync](skills/video-sync/README.en.md) | **Composites a video with the shot data alongside it**: footage on one side, the current shot's data on the other, switching at every cut with the list scrolling and highlighting itself. Landscape stacks, portrait sits side by side; the layout is one CSS file. |
 
 ## Install
@@ -38,7 +38,7 @@ each skill is self-contained.
 
 `demo-report/` is the **real output** of running the skill on `demo-video.mp4`
 (a 202.9-second AI-generated short film, *啥是AI*): 53 shots, 3.83 s average shot length,
-15.7 cuts per minute, all 14 gates green. `demo-report-en/` is the same pipeline run on a
+15.7 cuts per minute, all 15 gates green. `demo-report-en/` is the same pipeline run on a
 30-second English commercial with `--lang en` — an entirely English report.
 
 [![Shot breakdown report](skills/video-shots/assets/report.png)](demo-report/shots-report.html)
@@ -59,7 +59,13 @@ demo-report/
 └── frames/             ← first and last keyframe of every shot, 106 files
 ```
 
-`demo-sync/demo-en-sync.mp4` is what **video-sync** produces: the same 30-second commercial with
-its shot data underneath, switching at every cut.
+What **video-sync** produces is at the bottom of this page — as a video, not a screenshot.
 
-![video with shot data](skills/video-sync/assets/output-landscape.png)
+## What it looks like
+
+A 30-second English commercial with its 5-shot breakdown, 1280×1296. The panel switches with every
+cut; the list scrolls up and the highlight rides along:
+
+<video src="https://github.com/eternityspring/reelbench-skills/raw/main/demo-sync/demo-en-sync.mp4" controls muted playsinline width="760"></video>
+
+If the player does not load, grab the file: [`demo-sync/demo-en-sync.mp4`](demo-sync/demo-en-sync.mp4)

@@ -7,7 +7,7 @@
 
 | skill | 干什么 |
 | --- | --- |
-| [video-shots](skills/video-shots/) | **拉片**：把一条成片拆成逐镜头的分析表——时长、景别、类别、运镜、画面。切点与时长由 ffmpeg 量，模型只判断该判断的四件事，14 道质量门逐条对账 |
+| [video-shots](skills/video-shots/) | **拉片**：把一条成片拆成逐镜头的分析表——时长、景别、类别、运镜、画面、节奏。切点与时长由 ffmpeg 量，模型只判断该判断的那几件事，15 道质量门逐条对账 |
 | [video-sync](skills/video-sync/) | **合成带分镜信息的视频**：画面一边、分镜信息一边，镜头切了信息跟着切、镜头表自动滚动高亮。横版上下叠、竖版左右并，布局改一份 CSS 就行 |
 
 ## 安装
@@ -35,7 +35,7 @@ cd reelbench-skills
 ## 示例
 
 `demo-report/` 是拿 `demo-video.mp4`（202.9 秒的 AI 短片《啥是AI》）真跑出来的**完整产物**：
-53 镜、平均镜长 3.83 秒、每分钟 15.7 切、14 道质量门全绿。
+53 镜、平均镜长 3.83 秒、每分钟 15.7 切、15 道质量门全绿。
 `demo-report-en/` 是同一套流程跑一条 30 秒英文广告片的产物（`--lang en`，报告全英文）。
 
 [![拉片报告](skills/video-shots/assets/report.png)](demo-report/shots-report.html)
@@ -55,7 +55,12 @@ demo-report/
 └── frames/             ← 每镜首尾两张关键帧，共 106 张
 ```
 
-`demo-sync/demo-en-sync.mp4` 是 **video-sync** 的产出：同一条 30 秒英文广告片，
-画面在上、分镜信息在下，镜头切了信息跟着切。
+**video-sync** 的产出在最后面——直接看视频。
 
-![带分镜信息的视频](skills/video-sync/assets/output-landscape.png)
+## 成片长这样
+
+30 秒英文广告片 + 5 镜分镜信息，1280×1296。镜头切了信息跟着切，列表往上滚、高亮跟着滑：
+
+<video src="https://github.com/eternityspring/reelbench-skills/raw/main/demo-sync/demo-en-sync.mp4" controls muted playsinline width="760"></video>
+
+播放器没出来就直接下载：[`demo-sync/demo-en-sync.mp4`](demo-sync/demo-en-sync.mp4)

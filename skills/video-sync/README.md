@@ -6,8 +6,6 @@
 把 [video-shots](../video-shots/) 的拉片数据和原片合成一条**能直接看的视频**：
 一边是画面，一边是这一镜的分镜信息，**镜头切了信息跟着切**，镜头表自动滚动并高亮当前这一镜。
 
-![上下版式](assets/output-landscape.png)
-
 ## 版式只看宽高比
 
 | 原片 | 版式 | |
@@ -17,7 +15,7 @@
 
 竖版的样子——输出是 1580×1080 的近似 3:2，不是把竖片硬塞进 16:9 两边填黑：
 
-![左右版式](assets/output-portrait.png)
+<img src="assets/output-portrait.png" width="620" alt="左右版式">
 
 两个方向都保证**画面原样缩放、不裁不拉**，面板补足剩下的画布。所有边长取偶数（h264 的要求），
 面板最短边不低于 260px（再小字就放不下）。详见 [`references/layout.md`](references/layout.md)。
@@ -108,11 +106,6 @@ node scripts/selftest.mjs
 动画命令（每条都必须短、长镜头滚完就夹住、`--ease` 生效）、
 ffmpeg 参数（vstack/hstack、`setsar=1`、三张静态图都要 `-loop`、无声片不接音轨、原片必须是 0 号输入）。
 
-## 自带样例
-
-仓库根目录的 `demo-sync/demo-en-sync.mp4`：30 秒英文广告片 + 5 镜分镜信息，
-1280×1296，就是上面第一张图那条。
-
 ## 和 video-shots 的关系
 
 ```
@@ -122,3 +115,11 @@ video-shots  →  shots.json + frames/  →  video-sync  →  out.mp4
 
 **两个 skill 各自独立**：四张词表在这边**自带一份**，不跨目录 import——skill 要能整个拷走。
 代价是 `video-shots` 那边加了新词，这边也要加一次，否则显示成枚举键。
+
+## 成片长这样
+
+30 秒英文广告片 + 5 镜分镜信息，1280×1296。镜头切了信息跟着切，列表往上滚、高亮跟着滑：
+
+<video src="https://github.com/eternityspring/reelbench-skills/raw/main/demo-sync/demo-en-sync.mp4" controls muted playsinline width="760"></video>
+
+播放器没出来就直接下载：[`demo-sync/demo-en-sync.mp4`](../../demo-sync/demo-en-sync.mp4)

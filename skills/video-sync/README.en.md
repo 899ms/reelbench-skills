@@ -8,8 +8,6 @@ Turns a [video-shots](../video-shots/README.en.md) breakdown plus the source fil
 **The panel changes when the film cuts** — the shot list scrolls itself and highlights the shot
 that is playing.
 
-![stacked layout](assets/output-landscape.png)
-
 ## The layout follows the aspect ratio, nothing else
 
 | Source | Layout | |
@@ -20,7 +18,7 @@ that is playing.
 The portrait case — the output is 1580×1080, roughly 3:2, not a vertical clip jammed into 16:9
 with black bars:
 
-![side-by-side layout](assets/output-portrait.png)
+<img src="assets/output-portrait.png" width="620" alt="side-by-side layout">
 
 Both directions **scale the footage as-is — never cropped, never stretched**; the panel fills the
 rest of the canvas. Every dimension is rounded to an even number (h264 requires it) and the
@@ -125,11 +123,6 @@ exists, `<script>` escaped); the animation commands (every one must stay short, 
 once the scroll lands, `--ease` takes effect); and the ffmpeg arguments (vstack/hstack, `setsar=1`,
 all three stills need `-loop`, no audio mapping on a silent source, the film must be input 0).
 
-## Bundled example
-
-`demo-sync/demo-en-sync.mp4` at the repository root: a 30-second English commercial with its
-5-shot breakdown, 1280×1296 — the first screenshot above.
-
 ## Relationship to video-shots
 
 ```
@@ -141,3 +134,12 @@ video-shots  →  shots.json + frames/  →  video-sync  →  out.mp4
 rather than importing across directories — a skill has to survive being copied out on its own. The
 price is that a new term added in `video-shots` has to be added here too, or it shows up as a raw
 enum key.
+
+## What it looks like
+
+A 30-second English commercial with its 5-shot breakdown, 1280×1296. The panel switches with every
+cut; the list scrolls up and the highlight rides along:
+
+<video src="https://github.com/eternityspring/reelbench-skills/raw/main/demo-sync/demo-en-sync.mp4" controls muted playsinline width="760"></video>
+
+If the player does not load, grab the file: [`demo-sync/demo-en-sync.mp4`](../../demo-sync/demo-en-sync.mp4)
