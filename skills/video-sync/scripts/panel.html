@@ -45,7 +45,7 @@ document.getElementById('panel').classList.add(LAYOUT.portrait ? 'portrait' : 'l
 const base = Math.max(12, Math.min(26, Math.min(LAYOUT.panel.width / 38, LAYOUT.panel.height / 26)));
 document.documentElement.style.fontSize = base + 'px';
 document.body.style.width = LAYOUT.panel.width + 'px';
-if (MODE !== 'tall') document.body.style.height = LAYOUT.panel.height + 'px';
+if (!MODE.startsWith('tall')) document.body.style.height = LAYOUT.panel.height + 'px';
 document.getElementById('panel').classList.add(...(MODE ? MODE.split('-') : ['live']));
 
 const shots = DATA.shots;

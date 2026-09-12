@@ -137,44 +137,66 @@ const doc = () => ({
 }
 
 /* ------------------------------------------------------------------ */
-/* 动画：每个镜头一条 sendcmd 命令                                       */
+/* 动画：当前镜头钉在第二行，每镜一条 sendcmd 命令                        */
 /* ------------------------------------------------------------------ */
 {
   eq(ramp(10, 10, 0, 0.45), '10', '起止相同就是个常数，不生成表达式');
   eq(ramp(0, 100, 4, 0.5), 'clip(0+100*(t-4)/0.5,0,100)', '一段缓动：从 a 到 b，之后夹住');
-  eq(ramp(100, 0, 4, 0.5), 'clip(100+-100*(t-4)/0.5,0,100)', '往回滚也夹得住');
   ok(ramp(0, 5000, 0, 0.45).length < 60,
     '**表达式必须短**：ffmpeg 的解析器在一百来项上直接配置失败（踩过）');
 
-  const shots = [{ id: 'S01', start: 0, end: 4 }, { id: 'S02', start: 4, end: 40 }];
-  const rows = [{ id: 'S01', top: 0, height: 110 }, { id: 'S02', top: 117, height: 110 }];
-  const m = motionPlan({ shots, rows, view: { x: 27, y: 66, width: 600, height: 463 }, content: 6171 });
+  // 五镜、等高行：看滚动从第几镜开始
+  const rows = [0, 1, 2, 3, 4].map((i) => ({ id: `S0${i + 1}`, top: i * 117, height: 110 }));
+  const shots = rows.map((r, i) => ({ id: r.id, start: i * 4, end: (i + 1) * 4 }));
+  const m = motionPlan({ shots, rows, view: { x: 27, y: 66, width: 600, height: 463 }, content: 2000 });
+  const argOf = (time, target) => m.commands.find((c) => c.time === time && c.target === target)?.arg;
 
-  eq(m.commands.length, 6, '两镜 × 三个目标（视窗、亮条、亮条位置）');
-  eq(m.commands[0].target, 'crop@win', '第一条驱动滚动窗口');
-  eq(m.commands[1].target, 'crop@band', '第二条驱动亮条从长图哪儿裁');
-  eq(m.commands[2].target, 'overlay@band', '第三条驱动亮条盖在屏幕哪儿');
-  eq(m.commands[3].time, 4, '命令挂在切点上');
-  ok(m.commands[4].arg.includes('/0.45'), '默认缓动 0.45 秒');
-  ok(m.commands.every((c) => c.arg.length < 120), '每条命令都很短——这是换 sendcmd 的全部理由');
-  eq(m.rowHeight, 110, '亮条高度取最高的一行');
+  eq(m.anchor, 117, '锚点取的是第二行的行首——不是「视窗高的百分之多少」，那样会卡在两行中间');
+  eq(m.anchorRow, 1, '当前镜头钉在第 2 行');
+  eq(argOf(0, 'crop@win'), '0', '第 1 镜：列表在顶，不滚');
+  eq(argOf(4, 'crop@win'), '0', '第 2 镜：还在顶，只是高亮往下挪一行，仍然不滚');
+  ok(argOf(8, 'crop@win').startsWith('clip(0+117*'), '**第 3 镜起才开始滚，一次正好一行**');
+  ok(argOf(12, 'crop@win').startsWith('clip(117+117*'), '之后每切一次再滚一行');
 
-  // 长镜头：36 秒的 S02 只在头 0.45 秒里滚，之后 clip 夹住不动
-  ok(m.commands[4].arg.startsWith('clip('), '滚完就被夹住，长镜头里纹丝不动');
-  eq(m.initial.offset, 0, '首帧的滚动位置');
-  eq(m.initial.screenY, 66, '首帧高亮条贴在列表顶边');
+  const top = motionPlan({ shots, rows, view: { x: 0, y: 0, width: 600, height: 463 }, content: 2000, anchorRow: 0 });
+  eq(top.anchor, 0, 'anchorRow=0 就是钉在第一行，第二镜起就开始滚');
+  ok(top.commands.find((c) => c.time === 4 && c.target === 'crop@win').arg.startsWith('clip('), '钉第一行时第 2 镜就滚');
+
+  eq(m.bands.length, 1, '行高只有一种就只建一层高亮条');
+  ok(m.commands.every((c) => c.arg.length < 140), '每条命令都很短——这是换 sendcmd 的全部理由');
+
+  // 行高不一样：按高度分层，不用的层挪到画面外
+  const mixed = motionPlan({
+    shots: [{ id: 'A', start: 0, end: 4 }, { id: 'B', start: 4, end: 8 }],
+    rows: [{ id: 'A', top: 0, height: 110 }, { id: 'B', top: 117, height: 180 }],
+    view: { x: 0, y: 0, width: 600, height: 463 }, content: 2000,
+  });
+  eq(mixed.bands.length, 2, '两种行高就建两层——crop 的高度是配置期定死的，改不动');
+  eq(mixed.bands[0], 110, '层按高度从小到大');
+  ok(mixed.commands.some((c) => c.target === 'overlay@band1' && c.arg === String(mixed.parkY)),
+    '没轮到的那层停到画面外');
+  eq(mixed.commands.find((c) => c.target === 'overlay@band0' && c.time === 4.45)?.arg, String(mixed.parkY),
+    '上一镜那层晚一个缓动才停——让它陪着滑完这一程，不在切点上凭空消失');
 
   const text = commandFile(m.commands);
-  eq(text.split('\n').length, 6, '一行一条命令');
   ok(/^0 crop@win y '/.test(text), 'sendcmd 的格式：时刻 目标 参数 表达式');
   ok(text.trim().endsWith(';'), '每条以分号收尾');
 
-  const custom = motionPlan({ shots, rows, view: { x: 0, y: 0, width: 600, height: 463 }, content: 6171, easeSeconds: 0.8 });
-  ok(custom.commands[4].arg.includes('/0.8'), '--ease 能调这段秒数');
+  const custom = motionPlan({ shots, rows, view: { x: 0, y: 0, width: 600, height: 463 }, content: 2000, easeSeconds: 0.8 });
+  ok(custom.commands.find((c) => c.time === 8 && c.target === 'crop@win').arg.includes('/0.8'), '--ease 能调这段秒数');
+
+  // 长镜头：滚完就夹住，不再爬
+  const longShot = motionPlan({
+    shots: [{ id: 'S01', start: 0, end: 2 }, { id: 'S02', start: 2, end: 40 }, { id: 'S03', start: 40, end: 78 }],
+    rows: [{ id: 'S01', top: 0, height: 110 }, { id: 'S02', top: 117, height: 110 }, { id: 'S03', top: 234, height: 110 }],
+    view: { x: 0, y: 0, width: 600, height: 463 }, content: 2000,
+  });
+  const long = longShot.commands.find((c) => c.time === 40 && c.target === 'crop@win').arg;
+  ok(long.startsWith('clip(') && long.endsWith(',0,117)'), '38 秒的长镜头滚完 0.45 秒就夹住，剩下 37.5 秒纹丝不动');
 
   const flat = motionPlan({ shots, rows, view: { x: 0, y: 0, width: 600, height: 463 }, content: 200 });
   eq(flat.maxOffset, 0, '内容没超出视窗就不滚');
-  eq(flat.commands[3].arg, '0', '不滚的时候命令就是个常数 0');
+  eq(flat.commands.find((c) => c.target === 'crop@win' && c.time === 8).arg, '0', '不滚的时候命令就是个常数 0');
 }
 
 /* ------------------------------------------------------------------ */
@@ -188,7 +210,7 @@ const doc = () => ({
     rows: [{ id: 'S01', top: 0, height: 50 }, { id: 'S02', top: 50, height: 60 }],
     view, content: 2000,
   });
-  ok(motion.commands.length === 6, '动画命令生成好了再拼参数');
+  ok(motion.commands.length >= 6, '动画命令生成好了再拼参数');
   const args = composeArgs({
     video: 'in.mp4', still: 'static.png', listDim: 'dim.png', listLit: 'lit.png', out: 'out.mp4',
     layout, motion, view, commands: '/tmp/motion.cmd', hasAudio: true,
@@ -198,12 +220,13 @@ const doc = () => ({
   ok(filter.includes('scale=1920:1080'), '画面按算好的尺寸缩');
   ok(filter.includes('scale=1920:864'), '底板按面板尺寸缩');
   ok(filter.includes(`crop@win=w=${view.width}:h=${view.height}`), '暗底长图按列表视窗裁');
-  ok(filter.includes(`crop@band=w=${view.width}:h=${motion.rowHeight}`), '亮条长图只裁一行高');
+  ok(filter.includes(`crop@band0=w=${view.width}:h=${motion.bands[0]}`), '亮条长图只裁一行高');
+  ok(filter.includes('overlay@band0='), '高亮条按行高分层，层号从 0 起');
   ok(filter.includes("sendcmd=f='/tmp/motion.cmd'"), '动画由 sendcmd 驱动');
-  ok(filter.includes('crop@win=') && filter.includes('crop@band=') && filter.includes('overlay@band='),
-    '三个被驱动的滤镜都起了名字，sendcmd 靠名字找它们');
+  ok(filter.includes('crop@win=') && filter.includes('crop@band0=') && filter.includes('overlay@band0='),
+    '被驱动的滤镜都起了名字，sendcmd 靠名字找它们');
   ok(filter.includes(`overlay@win=x=${view.x}:y=${view.y}`), '窗口盖回列表的位置');
-  eq((filter.match(/overlay@/g) ?? []).length, 2, '两次 overlay：滚动窗口 + 高亮条');
+  eq((filter.match(/overlay@/g) ?? []).length, 1 + motion.bands.length, '一次滚动窗口 + 每种行高一层高亮条');
   ok(!filter.includes('drawbox'),
     '不用 drawbox——它的表达式只在初始化时算一次，做不了动画（踩过）');
   ok(filter.includes('vstack=inputs=2'), '横版用 vstack');

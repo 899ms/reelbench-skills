@@ -40,9 +40,16 @@ compose       crop a viewport out of the dimmed strip → scrolling
 ```
 
 For a 53-shot film that is 3 screenshots instead of 53 (12 seconds), and it buys **real continuous
-motion**: at each cut the list scrolls for 0.45s to bring the current shot to its anchor and then
-**stops** (a list that creeps for the whole of a 16-second take is just distracting); the
-highlight bar rides the same easing.
+motion**.
+
+**The playing shot sits on the second row**: shots 1 and 2 leave the list still (only the
+highlight moves down), and **from the third shot on every cut scrolls exactly one row**. The
+scroll takes 0.45s and then stops — a list that creeps through a 16-second take is just
+distracting. The highlight bar rides the same easing.
+
+Row height **follows the content** (a longer description makes a taller row), so the highlight is
+layered by height: `crop` cannot change height at runtime, so one layer per distinct row height,
+and the ones not in use are parked off-screen.
 
 Two traps, documented in [`references/layout.md`](references/layout.md): `drawbox` evaluates its
 expressions only once at init (so it cannot animate), and a whole-film expression makes ffmpeg's
@@ -87,7 +94,8 @@ node scripts/video-sync.mjs export shots.json --video clip.mp4 --frames frames -
 
 Knobs: `--panel <ratio>` (landscape: panel height ÷ footage height, default 0.8; portrait: panel
 width ÷ footage width, default 1.6), `--width` / `--height` (caps on the footage area), `--crf`
-(quality), `--ease` (easing seconds at each cut), `--lang zh|en`.
+(quality), `--ease` (easing seconds at each cut), `--anchor` (which row the playing shot sits on,
+default 1 = second row), `--lang zh|en`.
 
 Requirements: `node` >= 18 (standard library only) + `ffmpeg` / `ffprobe` + a headless browser
 (Chrome / Chromium / Edge; `--chrome` takes a path). **No npm dependencies, no API keys.**

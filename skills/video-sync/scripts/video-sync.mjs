@@ -117,7 +117,7 @@ const I18N = {
     shots: 'Shots', shot: 'Shot', of: 'of', duration: 'Duration', size: 'Size', category: 'Category',
     camera: 'Camera', transition: 'Transition', frame: 'Frame', subjects: 'Subjects', text: 'On-screen text',
     audio: 'Audio', motion: 'Measured motion', now: 'Now playing', sec: 's',
-    rhythm: 'Rhythm', headShot: 'No. · time · size · camera', headFrame: 'Frame', headDesc: 'Description',
+    rhythm: 'Rhythm', headShot: 'No. · time · size', headFrame: 'Frame', headDesc: 'Description',
   },
 };
 
@@ -221,19 +221,38 @@ export function commandFile(commands) {
 /**
  * 滚动与高亮的时间函数——**每个镜头一条命令**，在切点处下发。
  *
- * 切点处滚一小段（默认 0.45 秒）把当前镜头带到锚点位置，**滚完就停住**：
- * 长镜头里让列表一直慢慢爬会一直晃眼睛——动在切点上，静在镜头里。
- * 高亮条和视窗用同一段缓动，所以是「一起滑过去」，不是一个跳一个滑。
+ * **当前镜头钉在第 `anchorRow + 1` 行的位置**（默认钉在第二行）：
+ *   第 1 镜   列表在顶，它就是第一行，不滚
+ *   第 2 镜   还在顶，高亮往下挪一行到第二行，仍然不滚
+ *   第 3 镜起 每切一次正好往上滚**一行**，当前镜头始终停在第二行
+ *
+ * 锚点必须取**整行的位置**（`rows[1].top`），不能用「视窗高的百分之多少」——
+ * 那样滚完当前行卡在两行中间，整张表看着是歪的（踩过）。
+ *
+ * 滚动只发生在切点：滚 `easeSeconds` 秒到位就**停住**，镜头再长也不动。
+ * 高亮条和视窗用同一段缓动，是「一起滑过去」，不是一个跳一个滑。
  */
-export function motionPlan({ shots, rows, view, content, easeSeconds = 0.45 }) {
+export function motionPlan({ shots, rows, view, content, easeSeconds = 0.45, anchorRow = 1 }) {
   const byId = new Map(rows.map((r) => [r.id, r]));
   const row = (s) => byId.get(s.id) ?? { top: 0, height: 0 };
-  const rowHeight = Math.max(...rows.map((r) => r.height), 1);
-  const anchor = view.height * 0.28;
+  // 锚点 = 第 anchorRow 行的行首，也就是「当前镜头该停在第几行」
+  const slot = Math.min(Math.max(0, Math.round(anchorRow)), Math.max(0, rows.length - 1));
+  const anchor = rows[slot] ? rows[slot].top - (rows[0]?.top ?? 0) : 0;
   const maxOffset = Math.max(0, content - view.height);
   const target = (s) => Math.min(maxOffset, Math.max(0, row(s).top - anchor));
-  const screenLo = view.y;
-  const screenHi = view.y + view.height - rowHeight;
+
+  /*
+   * 行高由内容决定（描述长的行更高），而 **crop 的高度改不动**——它只认 x/y 的运行时命令。
+   * 所以按行高分层：出现过几种行高就建几层高亮条，当前镜头用哪种高度就点亮哪一层，
+   * 其余各层挪到画面外「停车」。绝大多数片子只有一两种行高，也就一两层。
+   */
+  const bands = [...new Set(rows.map((r) => r.height))].sort((a, b) => a - b);
+  const bandOf = (s) => Math.max(0, bands.indexOf(row(s).height));
+  const parkY = view.y + view.height + 10; // 画面外，overlay 自己会裁掉
+  const screenY = (s, top, offset) => {
+    const hi = view.y + view.height - row(s).height;
+    return `clip(${view.y}+(${top})-(${offset}),${r2(view.y)},${r2(Math.max(view.y, hi))})`;
+  };
 
   const commands = [];
   shots.forEach((s, i) => {
@@ -241,34 +260,37 @@ export function motionPlan({ shots, rows, view, content, easeSeconds = 0.45 }) {
     const start = Number(s.start);
     const span = Math.max(0.001, Number(s.end) - start);
     const ease = Math.min(easeSeconds, span);
-    const fromOffset = prev ? target(prev) : target(s);
-    const toOffset = target(s);
-    const fromTop = prev ? row(prev).top : row(s).top;
-    const toTop = row(s).top;
-    const offset = ramp(fromOffset, toOffset, start, ease);
-    const top = ramp(fromTop, toTop, start, ease);
+    const band = bandOf(s);
+    const prevBand = prev ? bandOf(prev) : band;
+    const offset = ramp(prev ? target(prev) : target(s), target(s), start, ease);
+    const top = ramp(prev ? row(prev).top : row(s).top, row(s).top, start, ease);
 
     commands.push({ time: start, target: 'crop@win', command: 'y', arg: offset });
-    commands.push({ time: start, target: 'crop@band', command: 'y', arg: top });
-    commands.push({
-      time: start,
-      target: 'overlay@band',
-      command: 'y',
-      arg: `clip(${view.y}+(${top})-(${offset}),${r2(screenLo)},${r2(screenHi)})`,
+    commands.push({ time: start, target: `crop@band${band}`, command: 'y', arg: top });
+    commands.push({ time: start, target: `overlay@band${band}`, command: 'y', arg: screenY(s, top, offset) });
+
+    // 别的层停到画面外。上一镜那层晚 ease 秒再停——让它陪着滑完这一程，不要在切点上凭空消失
+    bands.forEach((_, j) => {
+      if (j === band) return;
+      commands.push({ time: j === prevBand ? start + ease : start, target: `overlay@band${j}`, command: 'y', arg: `${r2(parkY)}` });
     });
   });
 
   const first = shots[0];
   return {
     commands,
+    bands,
+    parkY,
     initial: {
       offset: first ? target(first) : 0,
       top: first ? row(first).top : 0,
       screenY: view.y + (first ? row(first).top - target(first) : 0),
+      band: first ? bandOf(first) : 0,
     },
-    rowHeight,
+    rowHeight: Math.max(...rows.map((r) => r.height), 1),
     maxOffset,
     anchor,
+    anchorRow: slot,
     easeSeconds,
   };
 }
@@ -394,7 +416,8 @@ const USAGE = `video-sync.mjs — 把拉片数据和原片合成一条视频
 
   compose <shots.json> --video <片> [--panels panels] [-o out.mp4] [--crf 20] [--ease 0.28]
       把画面与面板合成一条视频：横版上下叠、竖版左右并，音轨照搬原片。
-      切点处镜头表滚一小段到位、随后停住，高亮条同步滑过去（--ease 调这段秒数）
+      当前镜头钉在第二行：前两镜不滚，第三镜起每切一次往上滚一行，滚完就停住。
+      --anchor 改钉第几行（0 = 第一行），--ease 调缓动秒数
 
   export <shots.json> --video <片> [-o out.mp4] [--panels panels] [其余同上]
       panels + compose 一条龙（中间产物放 --panels 指的目录，成片用 -o）
@@ -457,16 +480,19 @@ export function composeArgs({
 }) {
   const { width: vw, height: vh } = layout.video;
   const { width: pw, height: ph } = layout.panel;
-  const { rowHeight, initial } = motion;
-  const filter = [
+  const { bands, parkY, initial } = motion;
+  const chain = [
     `[0:v]scale=${vw}:${vh}:flags=lanczos,setsar=1,fps=${layout.fps}[v]`,
     `[1:v]scale=${pw}:${ph},setsar=1,fps=${layout.fps},sendcmd=f='${commands}'[base]`,
     `[2:v]fps=${layout.fps},crop@win=w=${view.width}:h=${view.height}:x=0:y=${initial.offset}[win]`,
-    `[3:v]fps=${layout.fps},crop@band=w=${view.width}:h=${rowHeight}:x=0:y=${initial.top}[band]`,
+    // 一种行高一层高亮条：crop 的高度是配置期定死的，改不动，只能分层
+    `[3:v]fps=${layout.fps}${bands.length > 1 ? `,split=${bands.length}${bands.map((_, i) => `[lit${i}]`).join('')}` : '[lit0]'}`,
+    ...bands.map((h, i) => `[lit${i}]crop@band${i}=w=${view.width}:h=${h}:x=0:y=${initial.top}[band${i}]`),
     `[base][win]overlay@win=x=${view.x}:y=${view.y}[p0]`,
-    `[p0][band]overlay@band=x=${view.x}:y=${initial.screenY}[panel]`,
-    `[v][panel]${layout.stack}=inputs=2[out]`,
-  ].join(';');
+    ...bands.map((h, i) => `[p${i}][band${i}]overlay@band${i}=x=${view.x}:y=${i === initial.band ? initial.screenY : parkY}[p${i + 1}]`),
+    `[v][p${bands.length}]${layout.stack}=inputs=2[out]`,
+  ];
+  const filter = chain.join(';');
 
   const args = [
     '-v', 'error', '-y',
@@ -554,12 +580,14 @@ function cmdCompose(rest) {
   }
   const measure = readJson(layoutFile);
   const ease = flag(rest, '--ease');
+  const anchor = flag(rest, '--anchor');
   const motion = motionPlan({
     shots: doc.shots ?? [],
     rows: measure.rows,
     view: measure.view,
     content: measure.content,
     easeSeconds: typeof ease === 'string' ? Number(ease) : undefined,
+    anchorRow: typeof anchor === 'string' ? Number(anchor) : undefined,
   });
   const cmdFile = join(panelDir, 'motion.cmd');
   writeFileSync(cmdFile, `${commandFile(motion.commands)}\n`);
@@ -571,7 +599,8 @@ function cmdCompose(rest) {
   execFileSync('ffmpeg', args, { stdio: ['ignore', 'ignore', 'inherit'] });
   const done = probe(out);
   process.stderr.write(`[compose] ${out} — ${done.width}×${done.height} / ${done.durationSeconds}s / ${layout.stack === 'vstack' ? '画面在上' : '画面在左'}\n`);
-  process.stderr.write(`[compose] 镜头表在切点处滚 ${motion.easeSeconds}s 到位后停住（全表 ${measure.content}px）\n`);
+  process.stderr.write(`[compose] 当前镜头钉在第 ${motion.anchorRow + 1} 行，切点处滚 ${motion.easeSeconds}s 到位后停住`
+    + `（全表 ${measure.content}px，行高 ${motion.bands.join('/')}px）\n`);
 }
 
 export function main(argv) {

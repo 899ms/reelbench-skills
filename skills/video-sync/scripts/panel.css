@@ -58,7 +58,7 @@
   grid-template-columns:8.6rem 7.4rem minmax(0,1.15fr) minmax(0,1fr);
   align-items:start;
   gap:0.2rem 1rem;
-  padding:0.4rem 0.55rem;border-radius:0.35rem;
+  padding:0.55rem 0.55rem;border-radius:0.35rem;
   opacity:.42;
 }
 .panel .row.done{opacity:.28}
@@ -67,12 +67,13 @@
   box-shadow:inset 0.16rem 0 0 var(--lime);
 }
 .panel .rno{
-  position:absolute;left:0.55rem;top:0.3rem;
-  font-size:0.92rem;line-height:1.2;color:var(--lime);
+  position:absolute;left:0.55rem;top:0.45rem;
+  font-size:1rem;line-height:1.2;color:var(--lime);
 }
 .panel .row.on .rno{font-weight:600}
 
 /* 表头：与行同一套列宽，改列宽两处一起改 */
+.panel .listhead span{overflow:hidden;text-overflow:ellipsis}
 .panel .listhead{
   grid-area:listhead;
   display:grid;
@@ -80,37 +81,33 @@
   gap:0.2rem 1rem;
   padding:0 0.55rem 0.4rem;
   border-bottom:1px solid var(--line);
-  font-size:0.62rem;letter-spacing:0.06em;color:var(--mute);
+  font-size:0.86rem;letter-spacing:0.04em;color:var(--mute);
+  white-space:nowrap;
 }
 
 /* 第二格：缩略图 */
-.panel .thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0.2rem;display:block}
+.panel .thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:0.2rem;display:block;align-self:start}
 .panel .thumb.blank{background:#222a1d}
 
 /* 时间与镜头信息并成一格 */
 .panel .rinfo{display:flex;flex-direction:column;gap:0.12rem;min-width:0;padding-top:1.3rem}
-.panel .rtime{font-size:0.74rem;color:var(--mute);line-height:1.35}
+.panel .rtime{font-size:0.8rem;color:var(--mute);line-height:1.35}
 .panel .rtime i{font-style:normal;color:#c3ccb6;margin-left:0.35rem}
 .panel .rtags{
   display:flex;align-items:center;gap:0.28rem;
-  font-size:0.8rem;color:#bcc6ad;line-height:1.35;
+  font-size:0.86rem;color:#bcc6ad;line-height:1.35;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .panel .dot{width:0.46rem;height:0.46rem;border-radius:50%;flex-shrink:0}
 
-.panel .rdesc{
-  font-size:0.95rem;line-height:1.5;color:#d3dac8;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-}
+/* 画面描述与节奏分析**不截断**：内容多就把行撑高，行高由内容决定
+   （合成端按量到的每行高度分层画高亮条，所以这里可以随便长） */
+.panel .rdesc{font-size:1.12rem;line-height:1.55;color:#d3dac8}
 .panel .row.on .rdesc{color:var(--ink)}
 
 /* 第四格：节奏分析。角色直接用 [钩子] 写在句首，和描述一样大——
    这一格是给人读的判断，不是标签墙。 */
-.panel .rbeat{
-  min-width:0;
-  font-size:0.95rem;line-height:1.5;color:#bcc6ad;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-}
+.panel .rbeat{min-width:0;font-size:1.12rem;line-height:1.55;color:#bcc6ad}
 .panel .beat-tag{font-style:normal;font-weight:600;margin-right:0.35rem}
 .panel .row.on .rbeat{color:#d3dac8}
 .panel.no-beat .rbeat{display:none}
