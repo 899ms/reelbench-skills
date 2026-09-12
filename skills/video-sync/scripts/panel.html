@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="__LANG__">
+<head>
+<meta charset="utf-8">
+<title>__TITLE__ · panel</title>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div class="panel" id="panel">
+  <header class="head">
+    <div class="film"><b id="film-title"></b><span id="film-sub" class="mono"></span></div>
+    <div class="counter"><b id="counter-now"></b><span id="counter-all"></span></div>
+  </header>
+
+  <section class="now" id="now">
+    <div class="now-head">
+      <span class="no" id="now-no"></span>
+      <span class="tc mono" id="now-time"></span>
+      <b class="dur mono" id="now-dur"></b>
+    </div>
+    <div class="chips" id="now-chips"></div>
+    <p class="desc" id="now-desc"></p>
+    <div class="lines" id="now-lines"></div>
+  </section>
+
+  <section class="list" id="list">
+    <div class="rows" id="rows"></div>
+  </section>
+
+  <footer class="strip" id="strip"></footer>
+</div>
+
+<script>
+const DATA = "__DATA__";
+const LAYOUT = "__LAYOUT__";
+const W = DATA.words;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* 版式与字号：面板多大，字就多大——导出的是视频，字小了等于没有 */
+document.body.classList.add(LAYOUT.portrait ? 'portrait' : 'landscape');
+const base = Math.max(12, Math.min(26, Math.min(LAYOUT.panel.width / 38, LAYOUT.panel.height / 26)));
+document.documentElement.style.fontSize = base + 'px';
+document.body.style.width = LAYOUT.panel.width + 'px';
+document.body.style.height = LAYOUT.panel.height + 'px';
+
+const shots = DATA.shots;
+const current = () => {
+  const id = decodeURIComponent(location.hash.slice(1));
+  return shots.find((s) => s.id === id) ?? shots[0];
+};
+
+$('film-title').textContent = DATA.title || DATA.source;
+$('film-sub').textContent = DATA.title && DATA.source && DATA.title !== DATA.source ? DATA.source : '';
+
+/* 镜头表：整张都渲出来，再把当前那行滚到固定位置——截图时滚动位置就是「滚动」 */
+$('rows').innerHTML = shots.map((s) => `
+  <div class="row" data-id="${esc(s.id)}">
+    <span class="dot" style="background:${DATA.colors[s.sizeKey] || '#c4cfaa'}"></span>
+    ${s.thumb ? `<img class="thumb" src="file://${esc(s.thumb)}" alt="">` : '<span class="thumb blank"></span>'}
+    <span class="rno mono">${esc(s.id)}</span>
+    <span class="rtime mono">${esc(s.startText)}<i>${esc(s.seconds)}s</i></span>
+    <span class="rtags">${esc(s.size)}<i>${esc(s.camera)}</i></span>
+    <span class="rdesc">${esc(s.frame)}</span>
+  </div>`).join('');
+
+$('strip').innerHTML = shots.map((s) => `
+  <span class="seg" data-id="${esc(s.id)}"
+        style="width:${(s.seconds / DATA.total * 100).toFixed(3)}%;background:${DATA.colors[s.sizeKey] || '#c4cfaa'}"></span>`).join('');
+
+function paint() {
+  const s = current();
+  const index = shots.indexOf(s);
+
+  $('counter-now').textContent = s.id;
+  $('counter-all').textContent = `/ ${shots.length}`;
+  $('now-no').textContent = s.id;
+  $('now-time').textContent = `${s.startText} → ${s.endText}`;
+  $('now-dur').textContent = `${s.seconds}${W.sec === 's' ? 's' : ' ' + W.sec}`;
+  $('now-chips').innerHTML = [
+    `<span class="chip size"><i style="background:${DATA.colors[s.sizeKey] || '#c4cfaa'}"></i>${esc(s.size)}</span>`,
+    `<span class="chip">${esc(s.category)}</span>`,
+    `<span class="chip cam">${esc(s.camera)}</span>`,
+    s.transition ? `<span class="chip tr">${esc(s.transition)}</span>` : '',
+  ].join('');
+  $('now-desc').textContent = s.frame;
+  $('now-lines').innerHTML = [
+    s.subjects.length ? `<div class="line"><b>${esc(W.subjects)}</b>${esc(s.subjects.join(' / '))}</div>` : '',
+    s.onscreenText ? `<div class="line"><b>${esc(W.text)}</b>${esc(s.onscreenText)}</div>` : '',
+    s.audio ? `<div class="line"><b>${esc(W.audio)}</b>${esc(s.audio)}</div>` : '',
+  ].join('');
+
+  for (const row of document.querySelectorAll('.row')) {
+    const i = shots.findIndex((x) => x.id === row.dataset.id);
+    row.classList.toggle('on', row.dataset.id === s.id);
+    row.classList.toggle('done', i < index);
+  }
+  for (const seg of document.querySelectorAll('.seg')) {
+    const i = shots.findIndex((x) => x.id === seg.dataset.id);
+    seg.classList.toggle('on', seg.dataset.id === s.id);
+    seg.classList.toggle('done', i < index);
+  }
+
+  // 当前行钉在列表的固定位置（默认第二行），前后不够就贴边——不留空白
+  const row = document.querySelector('.row.on');
+  const list = $('list');
+  const rows = $('rows');
+  if (row) {
+    const anchor = list.clientHeight * 0.28;
+    const max = Math.max(0, rows.scrollHeight - list.clientHeight);
+    const offset = Math.min(max, Math.max(0, row.offsetTop - anchor));
+    rows.style.transform = `translateY(${-offset}px)`;
+  }
+  document.title = s.id;
+}
+
+paint();
+window.addEventListener('hashchange', paint);
+</script>
+</body>
+</html>

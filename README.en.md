@@ -8,6 +8,7 @@ Claude Code / Codex skills for working with video.
 | skill | what it does |
 | --- | --- |
 | [video-shots](skills/video-shots/README.en.md) | **Shot breakdown**: turns a finished film into a shot-by-shot table — duration, shot size, category, camera move, frame description. Cuts and durations are measured by ffmpeg; the model only judges the four things it should; 14 quality gates check every call. |
+| [video-sync](skills/video-sync/README.en.md) | **Composites a video with the shot data alongside it**: footage on one side, the current shot's data on the other, switching at every cut with the list scrolling and highlighting itself. Landscape stacks, portrait sits side by side; the layout is one CSS file. |
 
 ## Install
 
@@ -57,3 +58,8 @@ demo-report/
 ├── track.json          ← frame-difference motion curve (the machine's evidence)
 └── frames/             ← first and last keyframe of every shot, 106 files
 ```
+
+`demo-sync/demo-en-sync.mp4` is what **video-sync** produces: the same 30-second commercial with
+its shot data underneath, switching at every cut.
+
+![video with shot data](skills/video-sync/assets/output-landscape.png)

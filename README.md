@@ -8,6 +8,7 @@
 | skill | 干什么 |
 | --- | --- |
 | [video-shots](skills/video-shots/) | **拉片**：把一条成片拆成逐镜头的分析表——时长、景别、类别、运镜、画面。切点与时长由 ffmpeg 量，模型只判断该判断的四件事，14 道质量门逐条对账 |
+| [video-sync](skills/video-sync/) | **合成带分镜信息的视频**：画面一边、分镜信息一边，镜头切了信息跟着切、镜头表自动滚动高亮。横版上下叠、竖版左右并，布局改一份 CSS 就行 |
 
 ## 安装
 
@@ -53,3 +54,8 @@ demo-report/
 ├── track.json          ← 逐帧差分的运动曲线（机器证据）
 └── frames/             ← 每镜首尾两张关键帧，共 106 张
 ```
+
+`demo-sync/demo-en-sync.mp4` 是 **video-sync** 的产出：同一条 30 秒英文广告片，
+画面在上、分镜信息在下，镜头切了信息跟着切。
+
+![带分镜信息的视频](skills/video-sync/assets/output-landscape.png)
