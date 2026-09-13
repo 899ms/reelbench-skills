@@ -1,5 +1,6 @@
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-e2e6df?style=for-the-badge&labelColor=e2e6df&color=8b938a)](README.md)
 [![English](https://img.shields.io/badge/English-285444?style=for-the-badge)](README.en.md)
+[![Follow on X](https://img.shields.io/badge/Follow-%40eternityspring-8b938a?style=for-the-badge&labelColor=285444&logo=x&logoColor=e2e6df)](https://x.com/eternityspring)
 
 # reelbench-skills
 

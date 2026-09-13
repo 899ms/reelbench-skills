@@ -1,5 +1,7 @@
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-285444?style=for-the-badge)](README.md)
 [![English](https://img.shields.io/badge/English-e2e6df?style=for-the-badge&labelColor=e2e6df&color=8b938a)](README.en.md)
+[![微信交流群](https://img.shields.io/badge/%E5%BE%AE%E4%BF%A1-AI%20%E8%A7%86%E9%A2%91%E4%BA%A4%E6%B5%81%E7%BE%A4-8b938a?style=for-the-badge&labelColor=285444)](#ai-视频交流社群)
+[![关注作者 X](https://img.shields.io/badge/%E5%85%B3%E6%B3%A8%E4%BD%9C%E8%80%85-%40eternityspring-8b938a?style=for-the-badge&labelColor=285444&logo=x&logoColor=e2e6df)](https://x.com/eternityspring)
 
 # reelbench-skills
 
@@ -9,6 +11,15 @@
 | --- | --- |
 | [video-shots](skills/video-shots/) | **拉片**：把一条成片拆成逐镜头的分析表——时长、景别、类别、运镜、画面、节奏。切点与时长由 ffmpeg 量，模型只判断该判断的那几件事，15 道质量门逐条对账 |
 | [video-sync](skills/video-sync/) | **合成带分镜信息的视频**：画面一边、分镜信息一边，镜头切了信息跟着切、镜头表自动滚动高亮。横版上下叠、竖版左右并，布局改一份 CSS 就行 |
+
+## AI 视频交流社群
+
+作者独立运营的付费交流群，聊 AI 视频的工作流、工具和实操。**skill 本身是 Apache-2.0 开源的，
+用不用它和进不进群没关系。**
+
+有兴趣的加我：微信 **`hao_dev`**，添加时备注 **`github`**。
+
+<img src="assets/wechat.png" alt="烁皓微信二维码" width="180">
 
 ## 安装
 
