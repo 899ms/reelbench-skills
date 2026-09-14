@@ -1,7 +1,7 @@
-[![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-285444?style=for-the-badge)](README.md)
-[![English](https://img.shields.io/badge/English-e2e6df?style=for-the-badge&labelColor=e2e6df&color=8b938a)](README.en.md)
-[![微信交流群](https://img.shields.io/badge/%E5%BE%AE%E4%BF%A1-AI%20%E8%A7%86%E9%A2%91%E4%BA%A4%E6%B5%81%E7%BE%A4-8b938a?style=for-the-badge&labelColor=285444)](#ai-视频交流社群)
-[![关注作者 X](https://img.shields.io/badge/%E5%85%B3%E6%B3%A8%E4%BD%9C%E8%80%85-%40eternityspring-8b938a?style=for-the-badge&labelColor=285444&logo=x&logoColor=e2e6df)](https://x.com/eternityspring)
+[![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-a02128?style=for-the-badge)](README.md)
+[![English](https://img.shields.io/badge/English-ece9e7?style=for-the-badge&labelColor=ece9e7&color=8a8785)](README.en.md)
+[![微信交流群](https://img.shields.io/badge/%E5%BE%AE%E4%BF%A1-AI%20%E8%A7%86%E9%A2%91%E4%BA%A4%E6%B5%81%E7%BE%A4-8a8785?style=for-the-badge&labelColor=a02128)](#ai-视频交流社群)
+[![关注作者 X](https://img.shields.io/badge/%E5%85%B3%E6%B3%A8%E4%BD%9C%E8%80%85-%40eternityspring-8a8785?style=for-the-badge&labelColor=a02128&logo=x&logoColor=ece9e7)](https://x.com/eternityspring)
 
 # reelbench-skills
 

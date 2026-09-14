@@ -1,5 +1,5 @@
-[![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-e2e6df?style=for-the-badge&labelColor=e2e6df&color=8b938a)](README.md)
-[![English](https://img.shields.io/badge/English-285444?style=for-the-badge)](README.en.md)
+[![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-ece9e7?style=for-the-badge&labelColor=ece9e7&color=8a8785)](README.md)
+[![English](https://img.shields.io/badge/English-a02128?style=for-the-badge)](README.en.md)
 
 # video-sync
 
