@@ -1,0 +1,39 @@
+demo2-dirty.mp4 → naive.mp4　copy / obs
+扫了 14 根针
+
+  ✗ 字节级残留
+      「SubtitleHandler」在输出里出现 1 次（首现 @12031218）
+      「iPhone 15 Pro」在输出里出现 1 次（首现 @12031679）
+      「vid:v1e00fgi0000da64usvog65t9bk1rqgg」在输出里出现 1 次（首现 @12031753）
+      「wesley@yogatummee.com」在输出里出现 1 次（首现 @12031634）
+      「在家拍的第一段」在输出里出现 2 次（首现 @50）
+  ✗ tag 层残留
+      format 的 artist = wesley@yogatummee.com（源片里就有这个值）
+      format 的 album = iPhone 15 Pro（源片里就有这个值）
+      format 的 comment = vid:v1e00fgi0000da64usvog65t9bk1rqgg（源片里就有这个值）
+      format 的 location-eng = +31.2304+121.4737/（源片里就有这个值）
+      format 的 location = +31.2304+121.4737/（源片里就有这个值）
+      stream #2 的 handler_name = SubtitleHandler（源片里就有这个值）
+  ✗ 位置信息
+      format 还留着 location-eng
+      format 还留着 location
+  ✗ 设备与软件标识
+      format 还留着 artist = wesley@yogatummee.com
+      format 还留着 album = iPhone 15 Pro
+      format 还留着 comment = vid:v1e00fgi0000da64usvog65t9bk1rqgg
+  ✓ 源片时间戳
+  – 旋转矩阵　（跳过：copy 模式：画面未重编，旋转矩阵必须原样留着）
+  ✗ 流构成
+      输出里还有 1 条 data 流
+  ✗ 章节
+      输出还有 1 个章节
+  ✗ 码流身份串
+      码流里有「x264 - core」4 处（首现 @108）
+      码流里有「Lavc」8 处（首现 @146721）
+  ✓ profile 相符
+  ✓ 时长
+  ✓ 可解码
+
+  提示：有 1 个串是 obs 档自己写回去的（muxer 现写，非源片残留），已豁免
+
+❌ 7 道门红了

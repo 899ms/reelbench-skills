@@ -15,3 +15,6 @@ panel-lab.html
 
 .DS_Store
 node_modules/
+
+# 开发期的测试素材：video-scrub 拿它跑过，但自测是纯函数不依赖它，本地放着就行
+assets/demo2.mp4

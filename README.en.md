@@ -10,6 +10,7 @@ Claude Code / Codex skills for working with video.
 | --- | --- |
 | [video-shots](skills/video-shots/README.en.md) | **Shot breakdown**: turns a finished film into a shot-by-shot table — duration, shot size, category, camera move, frame description, rhythm role. Cuts and durations are measured by ffmpeg; the model only judges what it should; 15 quality gates check every call. |
 | [video-sync](skills/video-sync/README.en.md) | **Composites a video with the shot data alongside it**: footage on one side, the current shot's data on the other, switching at every cut with the list scrolling and highlighting itself. Landscape stacks, portrait sits side by side; the layout is one CSS file. |
+| [video-scrub](skills/video-scrub/README.en.md) | **Strips metadata**: rebuilds the film as a clean file carrying only picture and sound — GPS, device, account IDs and telemetry tracks all left behind. The hard part is the three layers `ffprobe` cannot see: SEI, the AAC DSE, and compressorname. Byte-for-byte picture by default, verified by 12 byte-level gates. |
 
 ## Install
 
@@ -60,6 +61,12 @@ demo-report/
 ├── track.json          ← frame-difference motion curve (the machine's evidence)
 └── frames/             ← first and last keyframe of every shot, 106 files
 ```
+
+`demo-scrub/` is what **video-scrub** produces — four pieces of text and no video, because its
+output looks **exactly like the source**, which is the whole point. What is worth reading is the
+reconciliation, above all [`half.txt`](demo-scrub/half.txt): the textbook recipe leaves `ffprobe`
+looking spotless while the bitstream still carries x264's encoder-settings SEI in 4 places and the
+AAC DSE in 8 — **no `ffprobe` command shows either of them**.
 
 What **video-sync** produces is at the bottom of this page — as a video, not a screenshot.
 

@@ -1,0 +1,48 @@
+# ffprobe 看到的（一片干净）
+{
+    "streams": [
+        {
+            "tags": {
+                "language": "und",
+                "handler_name": "VideoHandler"
+            }
+        },
+        {
+            "tags": {
+                "language": "und",
+                "handler_name": "SoundHandler"
+            }
+        }
+    ],
+    "format": {
+        "tags": {
+            "major_brand": "isom",
+            "minor_version": "512",
+            "compatible_brands": "isomiso2avc1mp41",
+            "encoder": "Lavf62.12.102"
+        }
+    }
+}
+
+# 本 skill 看到的
+demo2-dirty.mp4 → half.mp4　copy / obs
+扫了 14 根针
+
+  ✓ 字节级残留
+  ✓ tag 层残留
+  ✓ 位置信息
+  ✓ 设备与软件标识
+  ✓ 源片时间戳
+  – 旋转矩阵　（跳过：copy 模式：画面未重编，旋转矩阵必须原样留着）
+  ✓ 流构成
+  ✓ 章节
+  ✗ 码流身份串
+      码流里有「x264 - core」4 处（首现 @73）
+      码流里有「Lavc」8 处（首现 @146686）
+  ✓ profile 相符
+  ✓ 时长
+  ✓ 可解码
+
+  提示：有 1 个串是 obs 档自己写回去的（muxer 现写，非源片残留），已豁免
+
+❌ 1 道门红了

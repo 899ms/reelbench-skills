@@ -1,0 +1,37 @@
+demo2-dirty.mp4　53.37s　12.0MB　1312x736
+
+容器 tag：
+    major_brand = isom
+    minor_version = 512
+    compatible_brands = isomiso2avc1mp41
+  ! creation_time = 2025-03-14T08:22:11.000000Z
+  ! artist = wesley@yogatummee.com
+  ! album = iPhone 15 Pro
+  ! encoder = Lavf62.12.102
+  ! comment = vid:v1e00fgi0000da64usvog65t9bk1rqgg
+  ! location-eng = +31.2304+121.4737/
+  ! location = +31.2304+121.4737/
+
+流：
+  #0 video/h264
+      creation_time = 2025-03-14T08:22:11.000000Z
+      language = und
+      handler_name = VideoHandler
+  #1 audio/aac
+      creation_time = 2025-03-14T08:22:11.000000Z
+      language = und
+      handler_name = SoundHandler
+  #2 data/bin_data　← 这条不会被带过去
+      creation_time = 2025-03-14T08:22:11.000000Z
+      language = eng
+      handler_name = SubtitleHandler
+
+章节：1 个
+
+码流里的身份串（ffprobe 看不见这一层）：
+  ! 「x264 - core」4 处，首现 @108
+  ! 「Lavc」8 处，首现 @146721
+  ! 「Lavf」1 处，首现 @12031716
+
+验收会拿 14 个串当针去扫输出
+SEI：会删——码流里有 x264 - core（4 处）

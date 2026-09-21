@@ -11,6 +11,7 @@
 | --- | --- |
 | [video-shots](skills/video-shots/) | **拉片**：把一条成片拆成逐镜头的分析表——时长、景别、类别、运镜、画面、节奏。切点与时长由 ffmpeg 量，模型只判断该判断的那几件事，15 道质量门逐条对账 |
 | [video-sync](skills/video-sync/) | **合成带分镜信息的视频**：画面一边、分镜信息一边，镜头切了信息跟着切、镜头表自动滚动高亮。横版上下叠、竖版左右并，布局改一份 CSS 就行 |
+| [video-scrub](skills/video-scrub/) | **清元数据**：把片子重建成只有画面和声音的干净文件，GPS、设备、账号 ID、遥测轨一概不搬。难的是 `ffprobe` 看不见的三层——SEI、AAC 的 DSE、compressorname。默认画面逐字节照搬，12 道门字节级验收 |
 
 ## AI 视频交流社群
 
@@ -66,6 +67,12 @@ demo-report/
 ├── track.json          ← 逐帧差分的运动曲线（机器证据）
 └── frames/             ← 每镜首尾两张关键帧，共 106 张
 ```
+
+`demo-scrub/` 是 **video-scrub** 的产出——四段文字，没有视频，因为它的成品和源片
+**肉眼完全一样**，那正是设计目标。值得看的是那份对账，尤其
+[`half.txt`](demo-scrub/half.txt)：用网上教的标准做法清完，`ffprobe` 一片干净，
+而码流里 x264 写在 SEI 的编码参数串还有 4 处、AAC 的 DSE 里还有 8 处——
+**任何 `ffprobe` 命令都看不见它们**。
 
 **video-sync** 的产出在最后面——直接看视频。
 

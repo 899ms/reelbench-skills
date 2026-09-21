@@ -1,0 +1,23 @@
+assets/demo2.mp4　53.37s　12.0MB　1312x736
+
+容器 tag：
+    major_brand = isom
+    minor_version = 512
+    compatible_brands = isomiso2avc1mp41
+  ! encoder = Lavf58.45.100
+
+流：
+  #0 video/h264
+      language = und
+      handler_name = VideoHandler
+  #1 audio/aac
+      language = und
+      handler_name = SoundHandler
+
+码流里的身份串（ffprobe 看不见这一层）：
+  ! 「x264 - core」4 处，首现 @73
+  ! 「Lavc」8 处，首现 @146686
+  ! 「Lavf」1 处，首现 @12031011
+
+验收会拿 1 个串当针去扫输出
+SEI：会删——码流里有 x264 - core（4 处）
